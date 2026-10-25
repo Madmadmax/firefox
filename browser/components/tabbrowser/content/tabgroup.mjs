@@ -262,7 +262,7 @@ export class MozTabbrowserTabGroup extends MozXULElement {
             "browser-tabgroup-removed-from-dom"
           );
         } else {
-          let tabs = this.tabs;
+          let tabs = this.tabs.filter(tab => !tab.workspaceHidden);
           let tabCount = tabs.length;
           let hasActiveTab = false;
           tabs.forEach((tab, index) => {
@@ -524,7 +524,7 @@ export class MozTabbrowserTabGroup extends MozXULElement {
       let overflowCountLabel = this.overflowContainer.querySelector(
         ".tab-group-overflow-count"
       );
-      let tabs = this.tabs;
+      let tabs = this.tabs.filter(tab => !tab.workspaceHidden);
       let tabCount = tabs.length;
       const overflowOffset =
         this.hasActiveTab && gBrowser.selectedTab.splitview ? 2 : 1;
@@ -549,16 +549,26 @@ export class MozTabbrowserTabGroup extends MozXULElement {
 
   #updateLastTabOrSplitViewAttr() {
     const LAST_ITEM_ATTRIBUTE = "last-tab-or-split-view";
-    let lastTab = this.tabs[this.tabs.length - 1];
-    let currentLastTabOrSplitView = lastTab.splitview
-      ? lastTab.splitview
-      : lastTab;
+    let lastTab = this.tabs.filter(tab => !tab.workspaceHidden).at(-1);
+    let currentLastTabOrSplitView = lastTab?.splitview ?? lastTab;
 
     let prevLastTabOrSplitView = this.querySelector(`[${LAST_ITEM_ATTRIBUTE}]`);
     if (prevLastTabOrSplitView !== currentLastTabOrSplitView) {
       prevLastTabOrSplitView?.removeAttribute(LAST_ITEM_ATTRIBUTE);
-      currentLastTabOrSplitView.setAttribute(LAST_ITEM_ATTRIBUTE, "true");
+      currentLastTabOrSplitView?.setAttribute(LAST_ITEM_ATTRIBUTE, "true");
     }
+  }
+
+  updateWorkspaceVisibility() {
+    let tabs = this.tabs.filter(tab => !tab.workspaceHidden);
+    for (let [index, tab] of tabs.entries()) {
+      if (!tab.splitview) {
+        tab.setAttribute("aria-posinset", String(index + 1));
+        tab.setAttribute("aria-setsize", String(tabs.length));
+      }
+    }
+    this.#updateOverflowLabel();
+    this.#updateLastTabOrSplitViewAttr();
   }
 
   /**

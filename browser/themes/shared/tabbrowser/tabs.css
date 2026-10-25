@@ -2,6 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+.tabbrowser-tab[workspace-hidden],
+tab-group[workspace-hidden],
+tab-split-view-wrapper[workspace-hidden] {
+  display: none !important;
+}
+
 :root {
   --tabstrip-inner-border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
   --tab-group-suggestions-loading-animation-color-1: color-mix(in srgb, currentColor 5%, transparent);
@@ -1254,6 +1260,10 @@ tab-split-view-wrapper[dragtarget] {
       background-image: linear-gradient(to right, transparent, var(--identity-stroke-color) var(--tab-label-mask-size));
     }
   }
+}
+
+:root[container-workspaces] .tab-context-line {
+  display: none;
 }
 
 /* Pinned tabs */

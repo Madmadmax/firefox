@@ -439,6 +439,9 @@
       "chrome://browser/content/sidebar/sidebar-tab-list.mjs": [
         "../../../browser/components/sidebar/sidebar-tab-list.mjs"
       ],
+      "chrome://browser/content/sidebar/sidebar-workspace-switcher.mjs": [
+        "../../../browser/components/sidebar/sidebar-workspace-switcher.mjs"
+      ],
       "chrome://browser/content/tabbrowser/tab-groups-list.mjs": [
         "../../../browser/components/tabbrowser/content/tab-groups-list.mjs"
       ],

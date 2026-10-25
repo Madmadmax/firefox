@@ -339,6 +339,15 @@ export class MozTabSplitViewWrapper extends MozXULElement {
    * @param {number} [options.indexOfReplacedTab] [optional] Used if replacing a tab in the split view
    */
   addTabs(tabs, { isSessionRestore = false, indexOfReplacedTab = -1 } = {}) {
+    if (
+      !isSessionRestore &&
+      !gBrowser.containerWorkspaces.canCombineTabs([
+        ...this.tabs.filter((tab, index) => index != indexOfReplacedTab),
+        ...tabs,
+      ])
+    ) {
+      return;
+    }
     for (let tab of tabs) {
       if (tab.pinned) {
         return;
@@ -427,6 +436,14 @@ export class MozTabSplitViewWrapper extends MozXULElement {
    * Replace a tab in the split view with another tab
    */
   replaceTab(tabToReplace, newTab) {
+    if (
+      !gBrowser.containerWorkspaces.canCombineTabs([
+        ...this.tabs.filter(tab => tab != tabToReplace),
+        newTab,
+      ])
+    ) {
+      return;
+    }
     let indexOfReplacedTab = this.tabs.indexOf(tabToReplace);
 
     // Select the adopted tab BEFORE removing the old one to prevent Firefox

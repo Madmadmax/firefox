@@ -145,3 +145,14 @@ skip-if = [
 ["browser_vertical_tabs_stacking_context.js"]
 
 ["browser_view_sidebar_menu.js"]
+
+["browser_workspace_native_swipe.js"]
+run-if = [
+  "os == 'mac' && !headless",
+]
+support-files = [
+  "!/gfx/layers/apz/test/mochitest/apz_test_utils.js",
+  "!/gfx/layers/apz/test/mochitest/apz_test_native_event_utils.js",
+]
+
+["browser_workspace_switcher.js"]

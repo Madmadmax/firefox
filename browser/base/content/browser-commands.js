@@ -92,7 +92,11 @@ var BrowserCommands = {
       return;
     }
 
-    let newTab = gBrowser.addTrustedTab("about:opentabs");
+    let newTab = gBrowser.addTrustedTab("about:opentabs", {
+      userContextId: gBrowser.containerWorkspaces.enabled
+        ? gBrowser.selectedTab.userContextId
+        : 0,
+    });
     gBrowser.addTabSplitView([gBrowser.selectedTab, newTab], {
       insertBefore: gBrowser.selectedTab,
       trigger: "keyboard_shortcut",
@@ -269,6 +273,10 @@ var BrowserCommands = {
             relatedToCurrent,
             resolveOnNewTabCreated: resolve,
           };
+          if (gBrowser.containerWorkspaces.enabled) {
+            options.userContextId =
+              gBrowser.containerWorkspaces.activeUserContextId;
+          }
           if (!werePassedURL && searchClipboard) {
             let clipboard = readFromClipboard();
             clipboard =

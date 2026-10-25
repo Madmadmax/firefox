@@ -18,6 +18,9 @@ import "chrome://browser/content/sidebar/sidebar-opentabs-preview.mjs";
 // eslint-disable-next-line import/no-unassigned-import
 import "chrome://browser/content/sidebar/sidebar-pins-promo.mjs";
 
+// eslint-disable-next-line import/no-unassigned-import
+import "chrome://browser/content/sidebar/sidebar-workspace-switcher.mjs";
+
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   ASRouter: "resource:///modules/asrouter/ASRouter.sys.mjs",
@@ -921,6 +924,10 @@ export default class SidebarMain extends MozLitElement {
       />
       <div class="wrapper">
         <slot name="tabstrip"></slot>
+        ${when(
+          window.SidebarController.sidebarVerticalTabsEnabled,
+          () => html`<slot name="workspaces"></slot>`
+        )}
         ${when(
           ((enabledToolsAndExtensionsCount > 2 && !this.expanded) ||
             this.expanded) &&

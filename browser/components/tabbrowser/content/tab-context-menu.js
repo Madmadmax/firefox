@@ -816,7 +816,8 @@ var TabContextMenu = {
       contextMoveTabToNewSplitView.disabled =
         this.contextTabs.length > 2 ||
         pinnedTabs.length ||
-        customizeTabs.length;
+        customizeTabs.length ||
+        !gBrowser.containerWorkspaces.canCombineTabs(this.contextTabs);
     }
 
     // Only one of Reload_Tab/Reload_Selected_Tabs should be visible.
@@ -1431,7 +1432,11 @@ var TabContextMenu = {
     let trigger;
     if (this.contextTabs.length < 2) {
       // Open new tab to split with context tab
-      newTab = gBrowser.addTrustedTab("about:opentabs");
+      newTab = gBrowser.addTrustedTab("about:opentabs", {
+        userContextId: gBrowser.containerWorkspaces.enabled
+          ? this.contextTabs[0].userContextId
+          : 0,
+      });
       tabsToAdd = [this.contextTabs[0], newTab];
       trigger = "menu_add";
     } else {

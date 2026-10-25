@@ -1,0 +1,52 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+:host {
+  display: block;
+  flex-shrink: 0;
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+.workspaces {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xxsmall);
+  padding-block: var(--space-small);
+
+  :host([expanded]) & {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-inline: var(--space-medium);
+  }
+}
+
+.workspace-button {
+  --button-icon-fill: var(--identity-icon-color, var(--toolbarbutton-icon-fill));
+
+  @media -moz-pref("browser.nova.enabled") {
+    --button-icon-fill: var(--identity-fill-color, var(--toolbarbutton-icon-fill));
+  }
+}
+
+.workspace-overflow-button {
+  --button-icon-fill: var(--toolbarbutton-icon-fill);
+}
+
+panel-item {
+  --panel-item-icon: var(--identity-icon);
+  --panel-item-fill: var(--identity-icon-color, currentColor);
+
+  @media -moz-pref("browser.nova.enabled") {
+    --panel-item-fill: var(--identity-fill-color, currentColor);
+  }
+
+  &.no-container-icon {
+    --identity-icon: url("chrome://browser/skin/tab.svg");
+  }
+}

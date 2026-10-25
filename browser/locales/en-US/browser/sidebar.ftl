@@ -24,6 +24,17 @@ sidebar-options-menu-button =
 sidebar-resize-splitter =
   .aria-label = Resize sidebar
 
+## Container workspace switcher, shown below vertical tabs
+
+sidebar-workspace-switcher =
+  .aria-label = Container workspaces
+# Workspace for tabs that don't belong to any container.
+sidebar-workspace-no-container =
+  .title = No Container
+sidebar-workspace-no-container-item = No Container
+sidebar-workspace-overflow-button =
+  .title = More containers
+
 ## Labels for sidebar history panel
 
 # Variables:

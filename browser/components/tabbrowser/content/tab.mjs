@@ -267,6 +267,7 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     return (
       this.isOpen &&
       !this.hidden &&
+      !this.workspaceHidden &&
       (!this.group || this.group.isTabVisibleInGroup(this))
     );
   }
@@ -274,6 +275,10 @@ export class MozTabbrowserTab extends MozElements.MozTab {
   get hidden() {
     // This getter makes `hidden` read-only
     return super.hidden;
+  }
+
+  get workspaceHidden() {
+    return this.hasAttribute("workspace-hidden");
   }
 
   get muted() {

@@ -918,7 +918,9 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
    */
   get nonHiddenTabs() {
     if (!this.#nonHiddenTabs) {
-      this.#nonHiddenTabs = this.openTabs.filter(tab => !tab.hidden);
+      this.#nonHiddenTabs = this.openTabs.filter(
+        tab => !tab.hidden && !tab.workspaceHidden
+      );
     }
     return this.#nonHiddenTabs;
   }
@@ -975,14 +977,14 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
 
     let focusableItems = [];
     for (let child of pinnedChildren) {
-      if (isTab(child)) {
+      if (isTab(child) && child.visible) {
         focusableItems.push(child);
       }
     }
     for (let child of unpinnedChildren) {
       if (isTab(child) && child.visible) {
         focusableItems.push(child);
-      } else if (isTabGroup(child)) {
+      } else if (isTabGroup(child) && !child.hasAttribute("workspace-hidden")) {
         focusableItems.push(child.labelElement);
 
         let visibleTabsInGroup = child.tabs.filter(tab => tab.visible);
@@ -1020,7 +1022,7 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
       if (
         !(
           (isTab(child) && child.visible) ||
-          isTabGroup(child) ||
+          (isTabGroup(child) && !child.hasAttribute("workspace-hidden")) ||
           (isSplitViewWrapper(child) && child.visible)
         )
       ) {
