@@ -60,6 +60,10 @@
   }
 }
 
+:host([workspaces]) :is(#sidebar-tools-and-extensions-splitter, .buttons-wrapper) {
+  display: none;
+}
+
 #sidebar-tools-and-extensions-splitter {
   display: block;
   border: none;

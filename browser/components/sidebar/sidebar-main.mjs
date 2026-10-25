@@ -149,6 +149,9 @@ export default class SidebarMain extends MozLitElement {
     window.addEventListener("SidebarItemAdded", this);
     window.addEventListener("SidebarItemChanged", this);
     window.addEventListener("SidebarItemRemoved", this);
+    window.addEventListener("ContainerWorkspaceChanged", this);
+    window.addEventListener("ContainerWorkspacesUpdated", this);
+    this.#updateWorkspacesAttribute();
 
     this.setCustomize();
     this.createTabsObservers();
@@ -169,6 +172,8 @@ export default class SidebarMain extends MozLitElement {
     window.removeEventListener("SidebarItemAdded", this);
     window.removeEventListener("SidebarItemChanged", this);
     window.removeEventListener("SidebarItemRemoved", this);
+    window.removeEventListener("ContainerWorkspaceChanged", this);
+    window.removeEventListener("ContainerWorkspacesUpdated", this);
 
     this._tabsOverflowObserver?.disconnect();
     this._toolsIntersectionObserver?.disconnect();
@@ -641,7 +646,20 @@ export default class SidebarMain extends MozLitElement {
       case "SidebarItemRemoved":
         this.requestUpdate();
         break;
+      case "ContainerWorkspaceChanged":
+      case "ContainerWorkspacesUpdated":
+        this.#updateWorkspacesAttribute();
+        break;
     }
+  }
+
+  // The workspace switcher replaces the tools; Customize stays reachable from
+  // the context menu.
+  #updateWorkspacesAttribute() {
+    this.toggleAttribute(
+      "workspaces",
+      !!window.gBrowser?.containerWorkspaces?.enabled
+    );
   }
 
   handleOverflowKeypress = e => {
