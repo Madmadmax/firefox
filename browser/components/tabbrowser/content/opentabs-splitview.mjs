@@ -122,6 +122,10 @@ class OpenTabsInSplitView extends MozLitElement {
       return (
         !tab.pinned &&
         !tab.splitview &&
+        gBrowser.containerWorkspaces.canCombineTabs([
+          ...(this.currentSplitView?.tabs ?? []),
+          tab,
+        ]) &&
         tab?.linkedBrowser?.currentURI?.spec !== BROWSER_OPEN_TABS_URL
       );
     });

@@ -17,6 +17,8 @@ const lazy = XPCOMUtils.declareLazy({
     "moz-src:///browser/components/tabbrowser/AsyncTabSwitcher.sys.mjs",
   BrowserUIUtils: "resource:///modules/BrowserUIUtils.sys.mjs",
   BrowserWindowTracker: "resource:///modules/BrowserWindowTracker.sys.mjs",
+  ContainerWorkspaces:
+    "moz-src:///browser/components/tabbrowser/ContainerWorkspaces.sys.mjs",
   ContextualIdentityService:
     "moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs",
   E10SUtils: "resource://gre/modules/E10SUtils.sys.mjs",
@@ -295,6 +297,8 @@ export class Tabbrowser {
 
     this.#setupEventListeners();
     this._initialized = true;
+    this.containerWorkspaces = new lazy.ContainerWorkspaces(this);
+    this.containerWorkspaces.init();
   }
 
   documentGlobal;
@@ -572,7 +576,7 @@ export class Tabbrowser {
     return this.tabGroups
       .filter(tabGroup => tabGroup.collapsed)
       .flatMap(tabGroup => tabGroup.tabs)
-      .filter(tab => !tab.hidden && !tab.closing);
+      .filter(tab => !tab.hidden && !tab.workspaceHidden && !tab.closing);
   }
 
   addEventListener(...args) {
@@ -1974,6 +1978,7 @@ export class Tabbrowser {
 
     this.#selectedBrowser = newBrowser;
     this.#selectedTab = newTab;
+    this.containerWorkspaces?.onTabSelected(newTab);
     this.showTab(newTab);
 
     this.appendStatusPanel();
@@ -4160,6 +4165,9 @@ export class Tabbrowser {
   ) {
     if (!tabs?.length) {
       throw new Error("Cannot create split view with zero tabs");
+    }
+    if (!this.containerWorkspaces.canCombineTabs(tabs)) {
+      return null;
     }
 
     // Capture group information before tabs are moved
@@ -6773,6 +6781,8 @@ export class Tabbrowser {
     let screenShareInActiveTab =
       aTab == this.selectedTab && browser._sharingState?.webRTC?.screen;
 
+    this.containerWorkspaces.ensureReplacementTab(aTab);
+
     if (!screenShareInActiveTab) {
       this.#blurTab(aTab);
     }
@@ -6853,6 +6863,9 @@ export class Tabbrowser {
     if (newTab) {
       this.addTrustedTab(this.documentGlobal.BROWSER_NEW_TAB_URL, {
         skipAnimation: true,
+        userContextId: this.containerWorkspaces.enabled
+          ? this.containerWorkspaces.activeUserContextId
+          : 0,
         // In the event that insertAfterCurrent is set and the current tab is
         // inside a group that is being closed we want to avoid creating the
         // new tab inside that group.
@@ -7250,7 +7263,11 @@ export class Tabbrowser {
     // If this tab has a successor, it should be selectable, since
     // hiding or closing a tab removes that tab as a successor.
     let successor = this.getSuccessor(aTab);
-    if (successor && !excludeTabs.has(successor)) {
+    if (
+      successor &&
+      !successor.workspaceHidden &&
+      !excludeTabs.has(successor)
+    ) {
       return successor;
     }
 
@@ -8363,6 +8380,16 @@ export class Tabbrowser {
       throw new Error("Can only move a tab into a split view wrapper");
     }
     if (aTab.pinned) {
+      return;
+    }
+    if (
+      !this.containerWorkspaces.canCombineTabs([
+        ...aSplitViewWrapper.tabs.filter(
+          (tab, index) => index != insertAtIndex
+        ),
+        aTab,
+      ])
+    ) {
       return;
     }
     if (
@@ -9854,6 +9881,7 @@ export class Tabbrowser {
   }
 
   destroy() {
+    this.containerWorkspaces.destroy();
     this.tabContainer.destroy();
     Services.obs.removeObserver(this, "contextual-identity-updated");
     Services.obs.removeObserver(this, "intl:app-locales-changed");

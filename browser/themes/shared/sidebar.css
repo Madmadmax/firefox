@@ -2,6 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* Moves the vertical tab strip with the fingers while swiping between
+   container workspaces; see sidebar-workspace-switcher.mjs. */
+@media (prefers-reduced-motion: no-preference) {
+  #vertical-tabs[workspace-swiping] #tabbrowser-tabs {
+    translate: calc(var(--workspace-swipe-progress, 0) * 100%) 0;
+  }
+}
+
 #sidebar-box {
   max-width: 75vw;
   min-width: 14em;

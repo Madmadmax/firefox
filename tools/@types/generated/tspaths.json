@@ -442,6 +442,9 @@
       "chrome://browser/content/sidebar/sidebar-tab-list.mjs": [
         "../../../browser/components/sidebar/sidebar-tab-list.mjs"
       ],
+      "chrome://browser/content/sidebar/sidebar-workspace-switcher.mjs": [
+        "../../../browser/components/sidebar/sidebar-workspace-switcher.mjs"
+      ],
       "chrome://browser/content/tabbrowser/drag-and-drop.mjs": [
         "../../../browser/components/tabbrowser/content/drag-and-drop.mjs"
       ],

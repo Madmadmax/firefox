@@ -264,7 +264,9 @@ var ctrlTab = {
   },
 
   get tabList() {
-    return this._recentlyUsedTabs;
+    return this._recentlyUsedTabs && gBrowser.containerWorkspaces?.enabled
+      ? this._recentlyUsedTabs.filter(tab => !tab.workspaceHidden)
+      : this._recentlyUsedTabs;
   },
 
   init: function ctrlTab_init() {
