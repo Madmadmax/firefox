@@ -59,6 +59,7 @@ add_task(async function test_native_workspace_swipes() {
       );
     }
 
+    controller.switchTo(controller.workspaces[0].userContextId);
     let next = controller.workspaces[1].userContextId;
     await pan();
     await TestUtils.waitForCondition(

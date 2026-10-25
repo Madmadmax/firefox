@@ -100,13 +100,13 @@ export class ContainerWorkspaces {
 
   get workspaces() {
     return [
-      { userContextId: 0 },
       ...lazy.ContextualIdentityService.getPublicIdentities().map(identity => ({
         ...identity,
         name: lazy.ContextualIdentityService.getUserContextLabel(
           identity.userContextId
         ),
       })),
+      { userContextId: 0 },
     ];
   }
 

@@ -44,6 +44,10 @@ function getButtons(switcher) {
   return [...switcher.shadowRoot.querySelectorAll(".workspace-button")];
 }
 
+function firstWorkspaceId() {
+  return gBrowser.containerWorkspaces.workspaces[0].userContextId;
+}
+
 function isPressed(button) {
   return button.buttonEl.getAttribute("aria-pressed") == "true";
 }
@@ -102,6 +106,23 @@ add_task(async function test_switcher_renders_all_workspaces_expanded() {
   Assert.ok(
     !switcher.shadowRoot.querySelector(".workspace-overflow-button"),
     "No overflow button while expanded"
+  );
+
+  let sidebarMain = SidebarController.sidebarMain;
+  Assert.ok(
+    BrowserTestUtils.isHidden(
+      sidebarMain.shadowRoot.querySelector(".buttons-wrapper")
+    ),
+    "Tools are hidden with workspaces"
+  );
+  Assert.lessOrEqual(
+    Math.abs(
+      switcher.getBoundingClientRect().bottom -
+        sidebarMain.shadowRoot.querySelector(".wrapper").getBoundingClientRect()
+          .bottom
+    ),
+    1,
+    "The switcher sits at the very bottom of the launcher"
   );
 
   await TestUtils.waitForCondition(
@@ -205,11 +226,14 @@ add_task(async function test_identity_changes_update_switcher() {
       () => getButtons(switcher).length == before + 1,
       "A new container adds a button"
     );
-    let button = getButtons(switcher).at(-1);
+    let button = getButtons(switcher).find(
+      b => Number(b.dataset.usercontextid) == identity.userContextId
+    );
+    Assert.ok(button, "New button belongs to the new container");
     Assert.equal(
-      Number(button.dataset.usercontextid),
-      identity.userContextId,
-      "New button belongs to the new container"
+      Number(getButtons(switcher).at(-1).dataset.usercontextid),
+      0,
+      "No Container stays last"
     );
     Assert.ok(
       button.classList.contains("identity-color-green"),
@@ -226,8 +250,8 @@ add_task(async function test_identity_changes_update_switcher() {
 
 add_task(async function test_swipe_switches_one_workspace_per_gesture() {
   let controller = gBrowser.containerWorkspaces;
-  controller.switchTo(0);
-  let [, first, second] = controller.workspaces.map(w => w.userContextId);
+  let [start, first, second] = controller.workspaces.map(w => w.userContextId);
+  controller.switchTo(start);
 
   // Enough distance for several switches, delivered as one gesture.
   let changed = workspaceChanged();
@@ -256,39 +280,38 @@ add_task(async function test_swipe_switches_one_workspace_per_gesture() {
     first,
     "Swiping the other way moves back"
   );
-
-  controller.switchTo(0);
 });
 
 add_task(async function test_swipe_ignored_cases() {
   let controller = gBrowser.containerWorkspaces;
-  controller.switchTo(0);
+  let first = firstWorkspaceId();
+  controller.switchTo(first);
 
   await wheel({ deltaX: -200 });
   Assert.equal(
     controller.activeUserContextId,
-    0,
+    first,
     "Swiping back from the first workspace doesn't wrap"
   );
 
   await wheel({ deltaX: 40 });
   Assert.equal(
     controller.activeUserContextId,
-    0,
+    first,
     "A swipe below the threshold doesn't switch"
   );
 
   await wheel({ deltaX: 160, deltaY: 400 });
   Assert.equal(
     controller.activeUserContextId,
-    0,
+    first,
     "Mostly vertical scrolling doesn't switch"
   );
 
   await wheel({ deltaX: 20, deltaMode: WheelEvent.DOM_DELTA_LINE });
   Assert.equal(
     controller.activeUserContextId,
-    0,
+    first,
     "Line-based wheel events (mouse wheels) don't switch"
   );
 });
@@ -341,7 +364,8 @@ async function completeSwipe(direction, delta) {
 add_task(async function test_native_swipe_allowed_directions() {
   let controller = gBrowser.containerWorkspaces;
   let { DIRECTION_LEFT, DIRECTION_RIGHT } = SimpleGestureEvent;
-  controller.switchTo(0);
+  let first = firstWorkspaceId();
+  controller.switchTo(first);
 
   let event = sendSwipeEvent("MozSwipeGestureMayStart");
   Assert.ok(event.defaultPrevented, "Swipe is accepted over vertical tabs");
@@ -360,14 +384,15 @@ add_task(async function test_native_swipe_allowed_directions() {
     "Only the previous workspace is reachable from the last one"
   );
 
-  controller.switchTo(0);
+  controller.switchTo(first);
 });
 
 add_task(async function test_native_swipe_moves_tabs_and_switches() {
   let controller = gBrowser.containerWorkspaces;
   let { DIRECTION_LEFT, DIRECTION_RIGHT } = SimpleGestureEvent;
   let verticalTabs = document.getElementById("vertical-tabs");
-  controller.switchTo(0);
+  let first = firstWorkspaceId();
+  controller.switchTo(first);
   let next = controller.workspaces[1].userContextId;
 
   sendSwipeEvent("MozSwipeGestureMayStart");
@@ -412,7 +437,7 @@ add_task(async function test_native_swipe_moves_tabs_and_switches() {
   sendSwipeEvent("MozSwipeGestureEnd");
   Assert.equal(
     controller.activeUserContextId,
-    0,
+    first,
     "An immediate swipe back returns to the previous workspace"
   );
 });
@@ -420,7 +445,8 @@ add_task(async function test_native_swipe_moves_tabs_and_switches() {
 add_task(async function test_native_swipe_cancelled() {
   let controller = gBrowser.containerWorkspaces;
   let verticalTabs = document.getElementById("vertical-tabs");
-  controller.switchTo(0);
+  let first = firstWorkspaceId();
+  controller.switchTo(first);
 
   sendSwipeEvent("MozSwipeGestureMayStart");
   sendSwipeEvent("MozSwipeGestureStart");
@@ -429,7 +455,7 @@ add_task(async function test_native_swipe_cancelled() {
   sendSwipeEvent("MozSwipeGestureEnd");
   Assert.equal(
     controller.activeUserContextId,
-    0,
+    first,
     "A swipe that doesn't complete keeps the workspace"
   );
   Assert.ok(
@@ -441,7 +467,7 @@ add_task(async function test_native_swipe_cancelled() {
 add_task(async function test_new_swipe_interrupts_settle_animation() {
   let controller = gBrowser.containerWorkspaces;
   let { DIRECTION_RIGHT } = SimpleGestureEvent;
-  controller.switchTo(0);
+  controller.switchTo(firstWorkspaceId());
 
   await completeSwipe(DIRECTION_RIGHT, -0.3);
   Assert.equal(
@@ -458,8 +484,6 @@ add_task(async function test_new_swipe_interrupts_settle_animation() {
     "A new swipe cancels the slide-in so it doesn't fight the fingers"
   );
   sendSwipeEvent("MozSwipeGestureEnd");
-
-  controller.switchTo(0);
 });
 
 add_task(async function test_swipe_with_reduced_motion() {
@@ -467,7 +491,7 @@ add_task(async function test_swipe_with_reduced_motion() {
   let controller = gBrowser.containerWorkspaces;
   let { DIRECTION_RIGHT } = SimpleGestureEvent;
   let verticalTabs = document.getElementById("vertical-tabs");
-  controller.switchTo(0);
+  controller.switchTo(firstWorkspaceId());
   let next = controller.workspaces[1].userContextId;
 
   let changed = workspaceChanged();
@@ -492,14 +516,14 @@ add_task(async function test_swipe_with_reduced_motion() {
     "No slide-in animation with reduced motion"
   );
 
-  controller.switchTo(0);
   await SpecialPowers.popPrefEnv();
 });
 
 add_task(async function test_swipe_outside_vertical_tabs_ignored() {
   let controller = gBrowser.containerWorkspaces;
   let navBar = document.getElementById("nav-bar");
-  controller.switchTo(0);
+  let first = firstWorkspaceId();
+  controller.switchTo(first);
 
   let event = sendSwipeEvent("MozSwipeGestureMayStart", 0, 0, navBar);
   Assert.ok(
@@ -516,7 +540,7 @@ add_task(async function test_swipe_outside_vertical_tabs_ignored() {
     "Swipe events outside the vertical tabs aren't intercepted"
   );
   sendSwipeEvent("MozSwipeGestureEnd");
-  Assert.equal(controller.activeUserContextId, 0, "Workspace is unchanged");
+  Assert.equal(controller.activeUserContextId, first, "Workspace is unchanged");
 });
 
 add_task(async function test_switcher_hidden_with_horizontal_tabs() {
@@ -530,5 +554,29 @@ add_task(async function test_switcher_hidden_with_horizontal_tabs() {
   await TestUtils.waitForCondition(
     () => !switcher.hidden,
     "Switcher returns with vertical tabs"
+  );
+});
+
+add_task(async function test_tools_return_without_workspaces() {
+  let sidebarMain = SidebarController.sidebarMain;
+  let switcher = getSwitcher();
+  await SpecialPowers.pushPrefEnv({
+    set: [["privacy.userContext.enabled", false]],
+  });
+  await TestUtils.waitForCondition(
+    () => !sidebarMain.hasAttribute("workspaces"),
+    "Workspaces turn off with containers disabled"
+  );
+  Assert.ok(switcher.hidden, "Switcher is hidden without containers");
+  Assert.ok(
+    BrowserTestUtils.isVisible(
+      sidebarMain.shadowRoot.querySelector(".buttons-wrapper")
+    ),
+    "Tools are shown again without workspaces"
+  );
+  await SpecialPowers.popPrefEnv();
+  await TestUtils.waitForCondition(
+    () => sidebarMain.hasAttribute("workspaces"),
+    "Workspaces come back with containers enabled"
   );
 });

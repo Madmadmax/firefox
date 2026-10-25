@@ -372,3 +372,34 @@ add_task(async function test_disabled_and_private_windows() {
     await BrowserTestUtils.closeWindow(privateWindow);
   }
 });
+
+add_task(async function test_no_container_is_last() {
+  let ids = workspaces.workspaces.map(workspace => workspace.userContextId);
+  Assert.equal(ids.at(-1), 0, "No Container is the last workspace");
+  Assert.deepEqual(
+    ids.slice(0, -1),
+    ContextualIdentityService.getPublicIdentities().map(
+      identity => identity.userContextId
+    ),
+    "Containers retain their configured order before No Container"
+  );
+
+  let previous = workspaces.activeUserContextId;
+  try {
+    workspaces.switchTo(ids.at(-2));
+    Assert.ok(workspaces.switchBy(1), "Advance from the last container");
+    Assert.equal(workspaces.activeUserContextId, 0, "Advance to No Container");
+    Assert.ok(!workspaces.switchBy(1), "Do not wrap after No Container");
+    Assert.equal(workspaces.activeUserContextId, 0);
+    Assert.ok(workspaces.switchBy(-1), "Move back from No Container");
+    Assert.equal(workspaces.activeUserContextId, ids.at(-2));
+    workspaces.switchTo(ids[0]);
+    Assert.ok(
+      !workspaces.switchBy(-1),
+      "Do not wrap before the first container"
+    );
+    Assert.equal(workspaces.activeUserContextId, ids[0]);
+  } finally {
+    workspaces.switchTo(previous);
+  }
+});
