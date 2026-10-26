@@ -403,3 +403,179 @@ add_task(async function test_no_container_is_last() {
     workspaces.switchTo(previous);
   }
 });
+
+add_task(async function test_inactive_workspace_session_restore() {
+  let restoreFirstContext = ContextualIdentityService.create(
+    "Restore A",
+    "fruit",
+    "green"
+  );
+  let restoreSecondContext = ContextualIdentityService.create(
+    "Restore B",
+    "briefcase",
+    "red"
+  );
+  let source = await BrowserTestUtils.openNewBrowserWindow();
+  let restoredWindow;
+  const key = "workspaceRestoreTestId";
+  function snapshot(browser) {
+    return browser.tabs.map(tab => ({
+      id: SessionStore.getCustomTabValue(tab, key),
+      userContextId: tab.userContextId,
+      pinned: tab.pinned,
+      group: tab.group?.id,
+    }));
+  }
+  try {
+    let browser = source.gBrowser;
+    let controller = browser.containerWorkspaces;
+    await TestUtils.waitForCondition(() => controller.enabled);
+    let tabs = new Map();
+    for (let [prefix, identity] of [
+      ["a", restoreFirstContext],
+      ["b", restoreSecondContext],
+    ]) {
+      for (let index = 1; index <= 3; index++) {
+        let id = prefix + index;
+        let tab = browser.addTrustedTab("about:blank", {
+          userContextId: identity.userContextId,
+        });
+        SessionStore.setCustomTabValue(tab, key, id);
+        tabs.set(id, tab);
+      }
+      browser.pinTab(tabs.get(prefix + 1));
+      browser.addTabGroup([tabs.get(prefix + 2), tabs.get(prefix + 3)]);
+    }
+    browser.selectedTab = tabs.get("a3");
+    browser.selectedTab = tabs.get("a2");
+    Assert.equal(
+      SessionStore.getCustomTabValue(tabs.get("a3"), "workspaceLastSelected"),
+      "",
+      "Selecting another tab clears the previous saved selection"
+    );
+    browser.selectedTab = tabs.get("b3");
+    controller.switchTo(0);
+    let expected = snapshot(browser);
+    let state = SessionStore.getWindowState(source);
+    await BrowserTestUtils.closeWindow(source);
+    source = null;
+
+    restoredWindow = await BrowserTestUtils.openNewBrowserWindow();
+    let ready = BrowserTestUtils.waitForEvent(
+      restoredWindow,
+      "SSWindowStateReady"
+    );
+    SessionStore.setWindowState(restoredWindow, state, true);
+    await ready;
+    browser = restoredWindow.gBrowser;
+    controller = browser.containerWorkspaces;
+    Assert.equal(controller.activeUserContextId, 0);
+    Assert.deepEqual(
+      snapshot(browser),
+      expected,
+      "All inactive tabs retain their order, containers, pinned state and groups"
+    );
+    for (let [identity, id] of [
+      [restoreFirstContext, "a2"],
+      [restoreSecondContext, "b3"],
+    ]) {
+      Assert.ok(
+        controller.switchTo(identity.userContextId),
+        "Can switch restored workspace"
+      );
+      Assert.equal(
+        SessionStore.getCustomTabValue(browser.selectedTab, key),
+        id,
+        "Restore the last selected tab of each inactive workspace"
+      );
+    }
+    Assert.deepEqual(
+      snapshot(browser),
+      expected,
+      "Switching restored workspaces does not reorder or create tabs"
+    );
+  } finally {
+    if (source && !source.closed) {
+      await BrowserTestUtils.closeWindow(source);
+    }
+    if (restoredWindow && !restoredWindow.closed) {
+      await BrowserTestUtils.closeWindow(restoredWindow);
+    }
+    ContextualIdentityService.remove(restoreFirstContext.userContextId);
+    ContextualIdentityService.remove(restoreSecondContext.userContextId);
+  }
+});
+
+add_task(async function test_duplicate_and_reopened_workspace_selection() {
+  let identity = ContextualIdentityService.create(
+    "Restore selection",
+    "fruit",
+    "green"
+  );
+  let win = await BrowserTestUtils.openNewBrowserWindow();
+  try {
+    let browser = win.gBrowser;
+    let controller = browser.containerWorkspaces;
+    await TestUtils.waitForCondition(() => controller.enabled);
+    let original = browser.addTrustedTab("about:mozilla", {
+      userContextId: identity.userContextId,
+    });
+    await BrowserTestUtils.browserLoaded(original.linkedBrowser);
+    browser.selectedTab = original;
+    let duplicate = SessionStore.duplicateTab(win, original, 0, true, {
+      inBackground: true,
+    });
+    await BrowserTestUtils.waitForEvent(duplicate, "SSTabRestoring");
+    Assert.equal(
+      SessionStore.getCustomTabValue(duplicate, "workspaceLastSelected"),
+      "",
+      "A background duplicate does not inherit the saved selection"
+    );
+    controller.switchTo(0);
+    controller.switchTo(identity.userContextId);
+    Assert.equal(
+      browser.selectedTab,
+      original,
+      "Keep the original selected tab"
+    );
+    controller.switchTo(0);
+    let closedCount = SessionStore.getClosedTabCountForWindow(win);
+    browser.removeTab(original, { animate: false });
+    await TestUtils.waitForCondition(
+      () => SessionStore.getClosedTabCountForWindow(win) > closedCount,
+      "SessionStore records the closed tab"
+    );
+    controller.switchTo(identity.userContextId);
+    Assert.equal(
+      browser.selectedTab,
+      duplicate,
+      "Use a remaining tab after close"
+    );
+    controller.switchTo(0);
+    let restoring = BrowserTestUtils.waitForEvent(win, "SSTabRestoring");
+    let reopened = SessionStore.undoCloseTab(win);
+    await restoring;
+    Assert.equal(
+      browser.selectedTab,
+      reopened,
+      "Reopening selects the restored tab"
+    );
+    Assert.equal(
+      SessionStore.getCustomTabValue(duplicate, "workspaceLastSelected"),
+      "",
+      "Reopening clears the previous selected tab's marker"
+    );
+    Assert.equal(
+      browser.tabs.filter(
+        tab =>
+          tab.userContextId == identity.userContextId &&
+          SessionStore.getCustomTabValue(tab, "workspaceLastSelected") == "1"
+      ).length,
+      1,
+      "Only one saved selection remains in the workspace"
+    );
+  } finally {
+    await BrowserTestUtils.closeWindow(win);
+    ContextualIdentityService.remove(identity.userContextId);
+  }
+});

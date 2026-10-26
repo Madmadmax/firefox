@@ -13,6 +13,7 @@ const lazy = XPCOMUtils.declareLazy({
 });
 
 const WINDOW_VALUE = "activeContainerWorkspace";
+const LAST_SELECTED_TAB_VALUE = "workspaceLastSelected";
 const IDENTITY_TOPICS = [
   "contextual-identity-created",
   "contextual-identity-updated",
@@ -20,6 +21,7 @@ const IDENTITY_TOPICS = [
   "contextual-identity-reordered",
 ];
 const TAB_EVENTS = [
+  "SSTabRestoring",
   "TabOpen",
   "TabClose",
   "TabSelect",
@@ -134,7 +136,7 @@ export class ContainerWorkspaces {
     let browser = this.#browser;
     let previousTab = browser.selectedTab;
     if (previousTab?.isOpen) {
-      this.#lastSelectedTabs.set(previousTab.userContextId, previousTab);
+      this.#rememberSelectedTab(previousTab);
     }
     let candidates = browser.tabs.filter(
       tab => tab.isOpen && !tab.hidden && tab.userContextId == userContextId
@@ -153,7 +155,7 @@ export class ContainerWorkspaces {
       });
       this.refresh();
       browser.selectedTab = target;
-      this.#lastSelectedTabs.set(userContextId, target);
+      this.#rememberSelectedTab(target);
       this.refresh();
       this.#save();
       this.#notify(previousUserContextId);
@@ -167,7 +169,7 @@ export class ContainerWorkspaces {
     if (!this.enabled || this.#restoring || this.#switching) {
       return;
     }
-    this.#lastSelectedTabs.set(tab.userContextId, tab);
+    this.#rememberSelectedTab(tab);
     if (tab.userContextId == this.activeUserContextId) {
       return;
     }
@@ -233,9 +235,13 @@ export class ContainerWorkspaces {
         break;
       case "SSWindowStateReady":
         this.#restoring = false;
-        this.#lastSelectedTabs.clear();
         if (this.#ready) {
           this.#restore();
+        }
+        break;
+      case "SSTabRestoring":
+        if (!this.#restoring) {
+          this.#restoreTabSelection(event.target);
         }
         break;
       case "TabSelect":
@@ -307,7 +313,40 @@ export class ContainerWorkspaces {
     this.#notifyUpdated();
   }
 
+  #rememberSelectedTab(tab) {
+    let previous = this.#lastSelectedTabs.get(tab.userContextId);
+    if (previous == tab) {
+      return;
+    }
+    if (previous?.isOpen) {
+      lazy.SessionStore.deleteCustomTabValue(previous, LAST_SELECTED_TAB_VALUE);
+    }
+    this.#lastSelectedTabs.set(tab.userContextId, tab);
+    lazy.SessionStore.setCustomTabValue(tab, LAST_SELECTED_TAB_VALUE, "1");
+  }
+
+  #restoreTabSelection(tab) {
+    if (
+      lazy.SessionStore.getCustomTabValue(tab, LAST_SELECTED_TAB_VALUE) != "1"
+    ) {
+      return;
+    }
+    let previous = this.#lastSelectedTabs.get(tab.userContextId);
+    if (previous?.isOpen && previous != tab) {
+      if (!tab.selected) {
+        lazy.SessionStore.deleteCustomTabValue(tab, LAST_SELECTED_TAB_VALUE);
+        return;
+      }
+      lazy.SessionStore.deleteCustomTabValue(previous, LAST_SELECTED_TAB_VALUE);
+    }
+    this.#lastSelectedTabs.set(tab.userContextId, tab);
+  }
+
   #restore() {
+    this.#lastSelectedTabs.clear();
+    for (let tab of this.#browser.tabs) {
+      this.#restoreTabSelection(tab);
+    }
     let value = lazy.SessionStore.getCustomWindowValue(
       this.#window,
       WINDOW_VALUE
