@@ -2,6 +2,23 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+:root[container-workspaces] #vertical-tabs {
+  --workspace-color: var(--identity-tab-color);
+  border-block-start: 3px solid var(--workspace-color);
+  background-image: linear-gradient(to bottom, color-mix(in srgb, var(--workspace-color) 28%, transparent), transparent);
+  background-size: 100% 80px;
+  background-repeat: no-repeat;
+
+  @media -moz-pref("browser.nova.enabled") {
+    --workspace-color: var(--identity-stroke-color);
+  }
+
+  @media (forced-colors: active) {
+    border-block-start-color: CanvasText;
+    background-image: none;
+  }
+}
+
 /* Moves the vertical tab strip with the fingers while swiping between
    container workspaces; see sidebar-workspace-switcher.mjs. */
 @media (prefers-reduced-motion: no-preference) {
