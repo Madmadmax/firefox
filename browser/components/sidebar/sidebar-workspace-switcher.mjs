@@ -52,6 +52,7 @@ export default class SidebarWorkspaceSwitcher extends MozLitElement {
   #settleAnimation = null;
   #reducedMotionQuery = null;
   #verticalTabs = null;
+  #workspaceColorClass = "";
   #expandedObserver = null;
 
   constructor() {
@@ -122,6 +123,7 @@ export default class SidebarWorkspaceSwitcher extends MozLitElement {
     this.#resetSwipe();
     this.#reducedMotionQuery?.removeEventListener("change", this);
     this.#reducedMotionQuery = null;
+    this.#setWorkspaceColor(null);
     this.#verticalTabs = null;
   }
 
@@ -303,7 +305,26 @@ export default class SidebarWorkspaceSwitcher extends MozLitElement {
     this.activeUserContextId = this.enabled
       ? controller.activeUserContextId
       : 0;
+    this.#setWorkspaceColor(
+      this.workspaces.find(w => w.userContextId == this.activeUserContextId)
+    );
     this.hidden = !this.enabled;
+  }
+
+  #setWorkspaceColor(workspace) {
+    let colorClass = workspace
+      ? this.#colorClass(workspace) || "identity-color-gray"
+      : "";
+    if (colorClass == this.#workspaceColorClass) {
+      return;
+    }
+    if (this.#workspaceColorClass) {
+      this.#verticalTabs?.classList.remove(this.#workspaceColorClass);
+    }
+    if (colorClass) {
+      this.#verticalTabs?.classList.add(colorClass);
+    }
+    this.#workspaceColorClass = colorClass;
   }
 
   #onWheel(event) {
