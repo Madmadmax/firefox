@@ -29,6 +29,8 @@ const TAB_EVENTS = [
   "TabSelect",
   "TabShow",
   "TabHide",
+  "TabPinned",
+  "TabUnpinned",
   "TabAttrModified",
   "TabGrouped",
   "TabUngrouped",
@@ -149,6 +151,9 @@ export class ContainerWorkspaces {
     Services.obs.removeObserver(this, "browser-delayed-startup-finished");
     Services.prefs.removeObserver("privacy.userContext.enabled", this);
     this.#lastSelectedTabs.clear();
+    this.#browser.tabContainer.pinnedTabsContainer.removeAttribute(
+      "workspace-empty"
+    );
   }
 
   get enabled() {
@@ -284,6 +289,13 @@ export class ContainerWorkspaces {
     for (let group of this.#browser.tabGroups) {
       group.updateWorkspaceVisibility();
     }
+    this.#browser.tabContainer.pinnedTabsContainer.toggleAttribute(
+      "workspace-empty",
+      this.enabled &&
+        !tabs.some(
+          tab => tab.pinned && tab.isOpen && !tab.hidden && !tab.workspaceHidden
+        )
+    );
     this.#browser.tabContainer._invalidateCachedVisibleTabs();
   }
 

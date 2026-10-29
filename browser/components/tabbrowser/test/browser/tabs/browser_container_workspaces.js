@@ -707,3 +707,108 @@ add_task(async function test_external_links_use_active_workspace() {
     await SpecialPowers.popPrefEnv();
   }
 });
+
+add_task(async function test_drag_with_inactive_pinned_tabs() {
+  let inactive = ContextualIdentityService.create(
+    "Drag inactive",
+    "briefcase",
+    "blue"
+  );
+  let active = ContextualIdentityService.create(
+    "Drag active",
+    "fingerprint",
+    "red"
+  );
+  let win = await BrowserTestUtils.openNewBrowserWindow();
+  try {
+    win.gReduceMotionOverride = true;
+    let browser = win.gBrowser;
+    let controller = browser.containerWorkspaces;
+    await TestUtils.waitForCondition(() => controller.enabled);
+    let hiddenPinned = Array.from({ length: 3 }, () => {
+      let tab = browser.addTrustedTab("about:blank", {
+        skipAnimation: true,
+        userContextId: inactive.userContextId,
+      });
+      browser.pinTab(tab);
+      return tab;
+    });
+    let tabs = Array.from({ length: 3 }, () =>
+      browser.addTrustedTab("about:blank", {
+        userContextId: active.userContextId,
+      })
+    );
+    controller.switchTo(active.userContextId);
+    await SimpleTest.promiseFocus(win);
+    await new Promise(resolve =>
+      win.requestAnimationFrame(() => win.requestAnimationFrame(resolve))
+    );
+    Assert.ok(
+      hiddenPinned.every(tab => tab.workspaceHidden),
+      "Other workspace's pinned tabs are filtered"
+    );
+    Assert.equal(
+      browser.tabContainer.visiblePinnedTabCount,
+      0,
+      "The active workspace has no pinned tabs"
+    );
+    Assert.equal(
+      win.getComputedStyle(browser.tabContainer.pinnedTabsContainer).display,
+      "none",
+      "No empty pinned area in the active workspace"
+    );
+    Assert.equal(
+      win.getComputedStyle(
+        win.document.getElementById("vertical-pinned-tabs-splitter")
+      ).display,
+      "none",
+      "No splitter for hidden pinned tabs"
+    );
+    await dragAndDrop(tabs[0], tabs[2], false, win, true, win);
+    Assert.deepEqual(
+      browser.visibleTabs,
+      [tabs[1], tabs[2], tabs[0]],
+      "Move an ordinary tab past its visible neighbours"
+    );
+    await new Promise(resolve =>
+      win.requestAnimationFrame(() => win.requestAnimationFrame(resolve))
+    );
+    await dragAndDrop(tabs[0], tabs[1], false, win, false, win);
+    Assert.deepEqual(
+      browser.visibleTabs,
+      tabs,
+      "Move the tab back to the beginning"
+    );
+    let pinned = browser.addTrustedTab("about:blank", {
+      skipAnimation: true,
+      userContextId: active.userContextId,
+    });
+    browser.pinTab(pinned);
+    Assert.equal(
+      browser.tabContainer.visiblePinnedTabCount,
+      1,
+      "Only the active workspace's pinned tab is counted"
+    );
+    Assert.notEqual(
+      win.getComputedStyle(browser.tabContainer.pinnedTabsContainer).display,
+      "none",
+      "The active pinned tab restores its area"
+    );
+    await dragAndDrop(tabs[0], tabs[2], false, win, true, win);
+    Assert.deepEqual(
+      browser.visibleTabs,
+      [pinned, tabs[1], tabs[2], tabs[0]],
+      "Reordering keeps the visible pinned tab at the beginning"
+    );
+    controller.switchTo(inactive.userContextId);
+    Assert.deepEqual(
+      browser.visibleTabs,
+      hiddenPinned,
+      "Inactive pinned tabs keep their order"
+    );
+  } finally {
+    await BrowserTestUtils.closeWindow(win);
+    ContextualIdentityService.remove(inactive.userContextId);
+    ContextualIdentityService.remove(active.userContextId);
+  }
+});

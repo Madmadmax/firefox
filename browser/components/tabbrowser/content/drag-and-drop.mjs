@@ -236,9 +236,9 @@ export class TabDragAndDrop {
       let newIndex = this._getDropIndex(event);
       if (
         (isSplitViewWrapper(draggedTab) || isTabGroupLabel(draggedTab)) &&
-        newIndex < gBrowser.pinnedTabCount
+          newIndex < this._tabbrowserTabs.visiblePinnedTabCount
       ) {
-        newIndex = gBrowser.pinnedTabCount;
+          newIndex = this._tabbrowserTabs.visiblePinnedTabCount;
       }
       let children = this._tabbrowserTabs.dragAndDropElements;
       if (newIndex == children.length) {
@@ -337,7 +337,7 @@ export class TabDragAndDrop {
       }
     } else if (draggedTab && draggedTab.container == this._tabbrowserTabs) {
       let isPinned = draggedTab.pinned;
-      let numPinned = gBrowser.pinnedTabCount;
+        let numPinned = this._tabbrowserTabs.visiblePinnedTabCount;
       let tabs = this._tabbrowserTabs.dragAndDropElements.slice(
         isPinned ? 0 : numPinned,
         isPinned ? numPinned : undefined
@@ -491,11 +491,9 @@ export class TabDragAndDrop {
       }
     } else if (isTabGroupLabel(draggedTab)) {
       const dropIndex = this._getDropIndex(event);
-      const droppedIntoPinnedArea = dropIndex < gBrowser.pinnedTabCount;
+        const numPinned = this._tabbrowserTabs.visiblePinnedTabCount;
       gBrowser.adoptTabGroup(draggedTab.group, {
-        elementIndex: droppedIntoPinnedArea
-          ? gBrowser.pinnedTabCount
-          : dropIndex,
+          elementIndex: dropIndex < numPinned ? numPinned : dropIndex,
       });
 
       // The group's tabs leave the window along with the group, so there is
@@ -527,11 +525,10 @@ export class TabDragAndDrop {
           selectedTab = tab;
           indexForSelectedTab = newIndex;
         } else if (isSplitViewWrapper(tab)) {
-          const droppedIntoPinnedArea = dropIndex < gBrowser.pinnedTabCount;
+            const numPinned = this._tabbrowserTabs.visiblePinnedTabCount;
+            const droppedIntoPinnedArea = dropIndex < numPinned;
           const newSplitView = gBrowser.adoptSplitView(tab, {
-            elementIndex: droppedIntoPinnedArea
-              ? gBrowser.pinnedTabCount
-              : newIndex,
+              elementIndex: droppedIntoPinnedArea ? numPinned : newIndex,
             selectTab: true,
           });
           if (newSplitView) {
@@ -578,11 +575,13 @@ export class TabDragAndDrop {
           gBrowser.addRangeToMultiSelectedTabs(firstTab, lastTab);
         }
         if (unpinnedSplitViews.length) {
+            let { dragAndDropElements, visiblePinnedTabCount } =
+              this._tabbrowserTabs;
           let firstUnpinnedSplitView =
-            this._tabbrowserTabs.dragAndDropElements[gBrowser.pinnedTabCount];
+              dragAndDropElements[visiblePinnedTabCount];
           let lastUnpinnedSplitView =
-            this._tabbrowserTabs.dragAndDropElements[
-              gBrowser.pinnedTabCount + unpinnedSplitViews.length - 1
+              dragAndDropElements[
+                visiblePinnedTabCount + unpinnedSplitViews.length - 1
             ];
           gBrowser.addRangeToMultiSelectedTabs(
             firstUnpinnedSplitView.tabs.at(0),
@@ -1171,10 +1170,7 @@ export class TabDragAndDrop {
     if (this._tabbrowserTabs.isContainerVerticalPinnedGrid(tab)) {
       // In expanded vertical mode, the max number of pinned tabs per row is dynamic
       // Set this before adjusting dragged tab's position
-      let pinnedTabs = this._tabbrowserTabs.visibleTabs.slice(
-        0,
-        gBrowser.pinnedTabCount
-      );
+        let pinnedTabs = this._tabbrowserTabs.visibleTabs.filter(t => t.pinned);
       let tabsPerRow = 0;
       let position = RTL_UI
         ? window.windowUtils.getBoundsWithoutFlushing(
@@ -1908,10 +1904,7 @@ export class TabDragAndDrop {
       return;
     }
 
-    let tabs = this._tabbrowserTabs.visibleTabs.slice(
-      0,
-      gBrowser.pinnedTabCount
-    );
+      let tabs = this._tabbrowserTabs.visibleTabs.filter(t => t.pinned);
 
     dragData.animLastScreenY = screenPosY;
     dragData.animLastScreenX = screenPosX;
@@ -2091,7 +2084,7 @@ export class TabDragAndDrop {
     this.#clearPinnedDropIndicatorTimer();
 
     let isPinned = draggedTab.pinned;
-    let numPinned = gBrowser.pinnedTabCount;
+      let numPinned = this._tabbrowserTabs.visiblePinnedTabCount;
     let dragAndDropElements = this._tabbrowserTabs.dragAndDropElements;
     let tabs = dragAndDropElements.slice(
       isPinned ? 0 : numPinned,
@@ -2147,7 +2140,7 @@ export class TabDragAndDrop {
       translate = Math.min(Math.max(translate, startBound), endBound);
     }
 
-    if (!gBrowser.pinnedTabCount && !this._dragToPinPromoCard.shouldRender) {
+      if (!numPinned && !this._dragToPinPromoCard.shouldRender) {
       let pinnedDropIndicatorMargin = parseFloat(
         window.getComputedStyle(this._pinnedDropIndicator).marginInline
       );
