@@ -335,6 +335,15 @@ document.addEventListener(
           case "Browser:Screenshot":
             ScreenshotsUtils.notify(window, "Shortcut");
             break;
+          case "Browser:CopyPageURL":
+            Cc["@mozilla.org/widget/clipboardhelper;1"]
+              .getService(Ci.nsIClipboardHelper)
+              .copyString(gURLBar.makeURIReadable(gBrowser.currentURI).spec);
+            ConfirmationHint.show(
+              document.getElementById("identity-box"),
+              "confirmation-hint-page-url-copied"
+            );
+            break;
           case "History:UndoCloseTab":
             SessionWindowUI.undoCloseTab(window);
             break;

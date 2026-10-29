@@ -194,17 +194,6 @@ ChromeUtils.defineLazyGetter(lazy, "KeyShortcuts", function () {
     },
   ];
 
-  if (isMac) {
-    // Add the extra key command for macOS, so you can open the inspector with cmd+shift+C
-    // like on Chrome DevTools.
-    shortcuts.push({
-      id: "inspectorMac",
-      toolId: "inspector",
-      shortcut: getLocalizedKeyShortcut("devtools-commandkey-inspector"),
-      modifiers: "accel,shift",
-    });
-  }
-
   if (lazy.ProfilerMenuButton.isInNavbar()) {
     shortcuts.push(...getProfilerKeyShortcuts());
   }
