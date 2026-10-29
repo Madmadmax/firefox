@@ -226,8 +226,9 @@ add_task(async function test_pin_to_pinned_tabs_container_vertical() {
 add_task(async function test_resize_container_on_unpin_vertical() {
   let tab = BrowserTestUtils.addTab(gBrowser, "about:blank", { pinned: true });
   let pinnedTabsContainer = document.getElementById("pinned-tabs-container");
+  // Flush layout after workspace visibility updates when pinning the first tab.
   let pinnedTabsContainerOriginalHeight =
-    window.windowUtils.getBoundsWithoutFlushing(pinnedTabsContainer).height;
+    pinnedTabsContainer.getBoundingClientRect().height;
   let unpinnedTabsContainer = document.getElementById(
     "tabbrowser-arrowscrollbox"
   );
