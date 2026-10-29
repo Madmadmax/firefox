@@ -113,6 +113,7 @@
     <command id="Tools:Sanitize" />
     <command id="Tools:PrivateBrowsing" />
     <command id="Browser:Screenshot" />
+    <command id="Browser:CopyPageURL" />
     <command id="History:UndoCloseTab" data-l10n-args='{"tabCount": 1}' />
     <command id="History:UndoCloseWindow" />
     <command id="History:RestoreLastClosedTabOrWindowOrSession" />
@@ -352,6 +353,9 @@
     <key id="key_privatebrowsing" command="Tools:PrivateBrowsing" data-l10n-id="private-browsing-shortcut"
          modifiers="accel,shift" reserved="true"/>
     <key id="key_screenshot" data-l10n-id="screenshot-shortcut" command="Browser:Screenshot" modifiers="accel,shift"/>
+#ifdef XP_MACOSX
+    <key id="key_copyPageURL" data-l10n-id="copy-page-url-shortcut" command="Browser:CopyPageURL" modifiers="accel,shift"/>
+#endif
     <key id="key_searchTabs" data-l10n-id="search-tabs-shortcut" command="Browser:SearchTabs" modifiers="accel,shift"/>
     <key id="key_sanitize" command="Tools:Sanitize" keycode="VK_DELETE" modifiers="accel,shift"/>
 #ifdef XP_MACOSX

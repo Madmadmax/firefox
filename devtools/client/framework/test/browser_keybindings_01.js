@@ -16,8 +16,6 @@ const {
   gDevToolsBrowser,
 } = require("resource://devtools/client/framework/devtools-browser.js");
 
-const isMac = AppConstants.platform == "macosx";
-
 const allKeys = [];
 function buildDevtoolsKeysetMap(keyset) {
   // Fetches all the keyboard shortcuts which were defined by lazyGetter 'KeyShortcuts' in
@@ -64,11 +62,6 @@ add_task(async function () {
     { id: "netmonitor", toolId: "netmonitor" },
     { id: "jsdebugger", toolId: "jsdebugger" },
   ];
-
-  // There are two possible keyboard shortcuts to open the inspector on macOS
-  if (isMac) {
-    tests.push({ id: "inspectorMac", toolId: "inspector" });
-  }
 
   // Toolbox reference will be set by first tool to open.
   let toolbox;

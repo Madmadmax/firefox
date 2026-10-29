@@ -212,6 +212,9 @@ private-browsing-shortcut =
 search-tabs-shortcut =
     .key = A
 
+copy-page-url-shortcut =
+    .key = C
+
 ## The shortcuts below are for Mac specific
 ## global menu.
 
