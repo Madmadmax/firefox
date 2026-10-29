@@ -83,6 +83,12 @@ add_task(async function test() {
 
         // Check that the load only comes from the selected tab.
         ok(tab.selected, "load came from selected tab");
+        ok(
+          window.gBrowser.tabs
+            .filter(other => other != tab)
+            .every(other => !other.linkedPanel),
+          "All background tabs, including pinned tabs, have no loaded browser"
+        );
         is(aNeedRestore, 6, "six tabs left to restore");
         is(aRestoring, 1, "one tab is restoring");
         is(aRestored, 0, "no tabs have been restored, yet");
@@ -96,6 +102,15 @@ add_task(async function test() {
   let backupState = ss.getBrowserState();
   ss.setBrowserState(JSON.stringify(state));
   await promiseRestoringTabs;
+  let pinned = gBrowser.tabs[0];
+  let loaded = BrowserTestUtils.browserLoaded(pinned.linkedBrowser);
+  gBrowser.selectedTab = pinned;
+  await loaded;
+  ok(pinned.linkedPanel, "Selecting a pending pinned tab loads it");
+  ok(
+    pinned.linkedBrowser.browsingContext.isAppTab,
+    "The restored browser retains pinned status"
+  );
 
   // Cleanup.
   await promiseBrowserState(backupState);

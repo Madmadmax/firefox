@@ -3,8 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /*
- * TabUnloader is used to discard tabs when memory or resource constraints
- * are reached. The discarded tabs are determined using a heuristic that
+ * TabUnloader discards inactive tabs on a schedule and when memory or resource
+ * constraints are reached. Low-memory candidates use a heuristic that
  * accounts for when the tab was last used, how many resources the tab uses,
  * and whether the tab is likely to affect the user if it is closed.
  */
@@ -22,6 +22,8 @@ const MIN_TABS_COUNT = 10;
 
 // Weight for non-discardable tabs.
 const NEVER_DISCARD = 100000;
+const INACTIVE_UNLOAD_PREF = "browser.tabs.unloadAfterInactiveMs";
+const INACTIVE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 // Default minimum inactive duration.  Tabs that were accessed in the last
 // period of this duration are not unloaded.
@@ -153,8 +155,7 @@ let DefaultTabUnloaderMethods = {
 };
 
 /**
- * This module is responsible for detecting low-memory scenarios and unloading
- * tabs in response to them.
+ * This module unloads tabs in response to low memory and prolonged inactivity.
  */
 
 export var TabUnloader = {
@@ -162,10 +163,106 @@ export var TabUnloader = {
    * Initialize low-memory detection and tab auto-unloading.
    */
   init() {
+    if (this._initialized) {
+      return;
+    }
+    this._initialized = true;
+    this._shuttingDown = false;
     const watcher = Cc["@mozilla.org/xpcom/memory-watcher;1"].getService(
       Ci.nsIAvailableMemoryWatcherBase
     );
     watcher.registerTabUnloader(this);
+    Services.prefs.addObserver(INACTIVE_UNLOAD_PREF, this);
+    Services.obs.addObserver(this, "wake_notification");
+    Services.obs.addObserver(this, "quit-application-granted");
+    this._updateInactivityTimer();
+  },
+
+  observe(subject, topic) {
+    switch (topic) {
+      case "nsPref:changed":
+        this._updateInactivityTimer();
+        break;
+      case "wake_notification":
+        this.unloadInactiveTabs().catch(console.error);
+        break;
+      case "quit-application-granted":
+        this._shuttingDown = true;
+        this._inactivityTimer?.cancel();
+        this._inactivityTimer = null;
+        Services.prefs.removeObserver(INACTIVE_UNLOAD_PREF, this);
+        Services.obs.removeObserver(this, "wake_notification");
+        Services.obs.removeObserver(this, "quit-application-granted");
+        break;
+    }
+  },
+
+  _updateInactivityTimer() {
+    this._inactivityTimer?.cancel();
+    this._inactivityTimer = null;
+    if (Services.prefs.getIntPref(INACTIVE_UNLOAD_PREF, 0) <= 0) {
+      return;
+    }
+    this._inactivityTimer = Cc["@mozilla.org/timer;1"].createInstance(
+      Ci.nsITimer
+    );
+    this._inactivityTimer.initWithCallback(
+      () => this.unloadInactiveTabs().catch(console.error),
+      INACTIVE_CHECK_INTERVAL_MS,
+      Ci.nsITimer.TYPE_REPEATING_SLACK
+    );
+  },
+
+  async unloadInactiveTabs(tabMethods = DefaultTabUnloaderMethods) {
+    if (
+      this._shuttingDown ||
+      this._isUnloading ||
+      Services.prefs.getIntPref(INACTIVE_UNLOAD_PREF, 0) <= 0
+    ) {
+      return 0;
+    }
+    this._isUnloading = true;
+    let unloaded = 0;
+    try {
+      for (let tabInfo of [...tabMethods.iterateTabs()]) {
+        if (!this._isInactiveCandidate(tabInfo, tabMethods.getNow())) {
+          continue;
+        }
+        try {
+          await tabInfo.gBrowser.prepareDiscardBrowser(tabInfo.tab);
+          if (
+            this._isInactiveCandidate(tabInfo, tabMethods.getNow()) &&
+            tabInfo.gBrowser.discardBrowser(tabInfo.tab)
+          ) {
+            unloaded++;
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    } finally {
+      this._isUnloading = false;
+    }
+    return unloaded;
+  },
+
+  _isInactiveCandidate(tabInfo, now) {
+    let { tab } = tabInfo;
+    let duration = Services.prefs.getIntPref(INACTIVE_UNLOAD_PREF, 0);
+    if (
+      this._shuttingDown ||
+      duration <= 0 ||
+      !tab.isOpen ||
+      !tab.linkedPanel ||
+      tab.splitview?.hasActiveTab ||
+      now - tab.lastAccessed < duration ||
+      !tab.linkedBrowser.isRemoteBrowser ||
+      tab.linkedBrowser.currentURI.schemeIs("about")
+    ) {
+      return false;
+    }
+    let weight = determineTabBaseWeight(tabInfo, DefaultTabUnloaderMethods);
+    return weight >= 0 && weight < NEVER_DISCARD;
   },
 
   isDiscardable(tab) {

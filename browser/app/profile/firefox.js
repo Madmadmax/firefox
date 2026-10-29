@@ -1238,6 +1238,8 @@ pref("security.allow_parent_unrestricted_js_loads", false);
     pref("browser.tabs.unloadOnLowMemory", false);
 #endif
 
+pref("browser.tabs.unloadAfterInactiveMs", 43200000);
+
 // Tab Unloader does not unload tabs whose last inactive period is longer than
 // this value (in milliseconds).
 pref("browser.tabs.min_inactive_duration_before_unload", 600000);
@@ -1632,7 +1634,7 @@ pref("browser.sessionstore.restore_hidden_tabs", false);
 // If restore_on_demand is set, pinned tabs are restored on startup by default.
 // When set to true, this pref overrides that behavior, and pinned tabs will only
 // be restored when they are focused.
-pref("browser.sessionstore.restore_pinned_tabs_on_demand", false);
+pref("browser.sessionstore.restore_pinned_tabs_on_demand", true);
 // The version at which we performed the latest upgrade backup
 pref("browser.sessionstore.upgradeBackup.latestBuildID", "");
 // How many upgrade backups should be kept

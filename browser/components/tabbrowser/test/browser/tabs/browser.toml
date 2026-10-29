@@ -19,6 +19,8 @@ prefs = [
 ["browser_TabUnloader.js"]
 support-files = ["file_webrtc.html"]
 
+["browser_TabUnloader_inactive.js"]
+
 ["browser_addAdjacentNewTab.js"]
 tags = "vertical-tabs"
 
