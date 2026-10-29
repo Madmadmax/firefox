@@ -1154,6 +1154,15 @@ pref("browser.tabs.loadBookmarksInBackground", false);
 pref("browser.tabs.loadBookmarksInTabs", false);
 pref("browser.tabs.tabClipWidth", 140);
 pref("browser.tabs.tabMinWidth", 76);
+// Vertical tab label size added to the default, in px.
+pref("browser.tabs.vertical.labelFontSizeDelta", 1);
+// Vertical tab corner radius in px, -1 keeps the theme radius.
+pref("browser.tabs.vertical.borderRadius", 6);
+pref("browser.tabs.vertical.squircle", true);
+// Extra space in expanded vertical tabs, in px: above and below the content,
+// and between the icon and the label.
+pref("browser.tabs.vertical.paddingBlockDelta", 2);
+pref("browser.tabs.vertical.iconLabelGapDelta", 2);
 
 // When tabs opened by links in other tabs via a combination of
 // browser.link.open_newwindow being set to 3 and target="_blank" etc are

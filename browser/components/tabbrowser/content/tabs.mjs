@@ -181,6 +181,44 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
     );
     this.#updateTabMinWidth(this._tabMinWidthPref);
 
+    /** @type {number} */
+    this._verticalTabLabelFontSizeDelta;
+    XPCOMUtils.defineLazyPreferenceGetter(
+      this,
+      "_verticalTabLabelFontSizeDelta",
+      "browser.tabs.vertical.labelFontSizeDelta",
+      0,
+      () => this.#updateVerticalTabStyle()
+    );
+    /** @type {number} */
+    this._verticalTabBorderRadius;
+    XPCOMUtils.defineLazyPreferenceGetter(
+      this,
+      "_verticalTabBorderRadius",
+      "browser.tabs.vertical.borderRadius",
+      -1,
+      () => this.#updateVerticalTabStyle()
+    );
+    /** @type {number} */
+    this._verticalTabPaddingBlockDelta;
+    XPCOMUtils.defineLazyPreferenceGetter(
+      this,
+      "_verticalTabPaddingBlockDelta",
+      "browser.tabs.vertical.paddingBlockDelta",
+      0,
+      () => this.#updateVerticalTabStyle()
+    );
+    /** @type {number} */
+    this._verticalTabIconLabelGapDelta;
+    XPCOMUtils.defineLazyPreferenceGetter(
+      this,
+      "_verticalTabIconLabelGapDelta",
+      "browser.tabs.vertical.iconLabelGapDelta",
+      0,
+      () => this.#updateVerticalTabStyle()
+    );
+    this.#updateVerticalTabStyle();
+
     CustomizableUI.addListener(this);
     this._updateNewTabVisibility();
 
@@ -1258,6 +1296,29 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
       "--tab-min-width-pref",
       (val ?? this._tabMinWidthPref) + "px"
     );
+  }
+
+  #updateVerticalTabStyle() {
+    this.style.setProperty(
+      "--vertical-tab-label-font-size-delta",
+      this._verticalTabLabelFontSizeDelta + "px"
+    );
+    this.style.setProperty(
+      "--vertical-tab-padding-block-delta",
+      this._verticalTabPaddingBlockDelta + "px"
+    );
+    this.style.setProperty(
+      "--vertical-tab-icon-label-gap-delta",
+      this._verticalTabIconLabelGapDelta + "px"
+    );
+    if (this._verticalTabBorderRadius >= 0) {
+      this.style.setProperty(
+        "--vertical-tab-border-radius",
+        this._verticalTabBorderRadius + "px"
+      );
+    } else {
+      this.style.removeProperty("--vertical-tab-border-radius");
+    }
   }
 
   get _isCustomizing() {

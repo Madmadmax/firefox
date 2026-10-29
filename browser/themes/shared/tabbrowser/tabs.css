@@ -1027,6 +1027,32 @@ tab-split-view-wrapper[dragtarget] {
   white-space: nowrap;
 }
 
+/* Set from the browser.tabs.vertical.* prefs in tabs.mjs. */
+#tabbrowser-tabs[orient="vertical"] {
+  --tab-border-radius: var(--vertical-tab-border-radius, var(--toolbarbutton-border-radius));
+
+  :is(.tab-label, .tab-group-label) {
+    font-size: calc(1em + var(--vertical-tab-label-font-size-delta, 0px));
+  }
+
+  &[expanded] .tabbrowser-tab:not([pinned], tab-split-view-wrapper > .tabbrowser-tab) {
+    .tab-background {
+      min-height: calc(var(--tab-min-height) + 2 * var(--vertical-tab-padding-block-delta, 0px));
+    }
+
+    .tab-label-container {
+      margin-inline-start: var(--vertical-tab-icon-label-gap-delta, 0);
+    }
+  }
+
+  @media -moz-pref("browser.tabs.vertical.squircle") {
+    :is(.tab-background, tab-split-view-wrapper) {
+      /* stylelint-disable-next-line property-no-unknown -- Supported by Gecko with layout.css.corner-shape.enabled. */
+      corner-shape: squircle;
+    }
+  }
+}
+
 .tab-close-button {
   -moz-context-properties: fill, fill-opacity;
   margin-inline-end: calc(var(--tab-padding-inline) / -2);
@@ -2904,6 +2930,17 @@ tab-group {
     has been added to root. There are certain scenarios when that attribute is temporarily
     removed from root such as when toggling the sidebar to expand with the toolbar button. */
     grid-template-columns: 1fr;
+  }
+}
+
+@media not -moz-pref("sidebar.visibility", "expand-on-hover") {
+  :root[container-workspaces]:not([sidebar-expand-on-hover]) #tabbrowser-tabs[orient="vertical"][expanded] > #pinned-tabs-container::part(items-wrapper) {
+    padding-block-start: max(
+      0px,
+      calc(
+        var(--tab-container-margin-inline-pinned-expanded) + var(--tab-margin-inline-pinned-expanded) - var(--tab-padding-block-start) - var(--tab-margin-block)
+      )
+    );
   }
 }
 
