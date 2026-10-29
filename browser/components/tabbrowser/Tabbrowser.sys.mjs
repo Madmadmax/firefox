@@ -5091,6 +5091,9 @@ export class Tabbrowser {
     tabGroupDataList,
     splitViewDataList = []
   ) {
+    let restorePinnedTabsOnDemand = Services.prefs.getBoolPref(
+      "browser.sessionstore.restore_pinned_tabs_on_demand"
+    );
     let tabs = [];
     let tabsFragment = this.document.createDocumentFragment();
     let tabToSelect = null;
@@ -5148,7 +5151,10 @@ export class Tabbrowser {
 
       // Add a new tab if needed.
       if (!tab) {
-        let createLazyBrowser = restoreTabsLazily && !select && !tabData.pinned;
+        let createLazyBrowser =
+          restoreTabsLazily &&
+          !select &&
+          (!tabData.pinned || restorePinnedTabsOnDemand);
 
         let url = "about:blank";
         if (tabData.entries?.length) {

@@ -5,11 +5,15 @@
 requestLongerTimeout(2);
 
 const PREF_RESTORE_ON_DEMAND = "browser.sessionstore.restore_on_demand";
+const PREF_RESTORE_PINNED_TABS_ON_DEMAND =
+  "browser.sessionstore.restore_pinned_tabs_on_demand";
 
 add_task(async function test() {
   Services.prefs.setBoolPref(PREF_RESTORE_ON_DEMAND, true);
+  Services.prefs.setBoolPref(PREF_RESTORE_PINNED_TABS_ON_DEMAND, false);
   registerCleanupFunction(function () {
     Services.prefs.clearUserPref(PREF_RESTORE_ON_DEMAND);
+    Services.prefs.clearUserPref(PREF_RESTORE_PINNED_TABS_ON_DEMAND);
   });
 
   let state = {

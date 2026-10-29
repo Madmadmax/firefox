@@ -27,7 +27,12 @@ def main():
 
     root = Path(__file__).resolve().parent.parent
     os.chdir(root)
-    objdir = root / "obj-aarch64-apple-darwin27.0.0"
+    environment = json.loads(
+        subprocess.check_output(
+            [str(root / "mach"), "environment", "--format", "json"], text=True
+        )
+    )
+    objdir = Path(environment["topobjdir"])
     destination = Path.home() / "Applications/Firefox Workspaces.app"
     if destination.exists() and not args.replace:
         parser.error(
