@@ -18,6 +18,15 @@ const lazy = XPCOMUtils.declareLazy({
   },
 });
 const MAX_SAVE_HINT_SHOWN_COUNT = 3;
+const RETAINED_TAB_VALUE = "retainedTabGroup";
+const GROUP_WINDOW_EVENTS = [
+  "TabSelect",
+  "TabClose",
+  "TabShow",
+  "TabHide",
+  "SSTabRestoring",
+  "SSWindowStateReady",
+];
 
 /**
  * Finds the anchor for the "Tab group saved" confirmation hint. This is the
@@ -120,6 +129,9 @@ export class MozTabbrowserTabGroup extends MozXULElement {
   /** @type {MutationObserver} */
   #tabChangeObserver;
 
+  /** @type {Map<number, MozTabbrowserTab>} */
+  #retainedTabs = new Map();
+
   /** @type {boolean} */
   #wasCreatedByAdoption = false;
 
@@ -154,10 +166,20 @@ export class MozTabbrowserTabGroup extends MozXULElement {
 
     // Similar to above, always set up TabSelect listener, as this gets
     // removed in disconnectedCallback
-    this.documentGlobal.addEventListener("TabSelect", this);
+    for (const type of GROUP_WINDOW_EVENTS) {
+      this.documentGlobal.addEventListener(type, this);
+    }
     this.addEventListener("SplitViewTabChange", this);
 
     if (this._initialized) {
+      if (
+        gBrowser.tabContainer.verticalMode &&
+        this.collapsed &&
+        gBrowser.selectedTab.group == this
+      ) {
+        this.#rememberRetainedTab(gBrowser.selectedTab);
+      }
+      this.#updateRetainedTabs();
       return;
     }
 
@@ -235,7 +257,9 @@ export class MozTabbrowserTabGroup extends MozXULElement {
   };
 
   disconnectedCallback() {
-    this.documentGlobal.removeEventListener("TabSelect", this);
+    for (const type of GROUP_WINDOW_EVENTS) {
+      this.documentGlobal.removeEventListener(type, this);
+    }
     this.documentGlobal.removeEventListener("unload", this.#removeObserver);
     this.removeEventListener("SplitViewTabChange", this);
     this.#tabChangeObserver?.disconnect();
@@ -249,6 +273,24 @@ export class MozTabbrowserTabGroup extends MozXULElement {
   #observeTabChanges() {
     if (!this.#tabChangeObserver) {
       this.#tabChangeObserver = new window.MutationObserver(mutations => {
+        const childrenChanged = mutations.some(
+          mutation => mutation.type == "childList"
+        );
+        if (childrenChanged) {
+          this.#restoreRetainedTabs();
+        }
+        if (
+          mutations.some(mutation => mutation.attributeName == "orient") &&
+          gBrowser.tabContainer.verticalMode &&
+          this.collapsed &&
+          gBrowser.selectedTab.group == this
+        ) {
+          this.#rememberRetainedTab(gBrowser.selectedTab);
+        }
+        if (!childrenChanged) {
+          this.#updateRetainedTabs();
+          return;
+        }
         if (!this.tabs.length) {
           this.dispatchEvent(
             new CustomEvent("TabGroupRemoved", {
@@ -276,7 +318,6 @@ export class MozTabbrowserTabGroup extends MozXULElement {
             tab.setAttribute("aria-setsize", String(tabCount));
           });
           this.hasActiveTab = hasActiveTab;
-          this.#updateOverflowLabel();
           this.#updateLastTabOrSplitViewAttr();
         }
         for (const mutation of mutations) {
@@ -299,9 +340,14 @@ export class MozTabbrowserTabGroup extends MozXULElement {
             }
           }
         }
+        this.#updateRetainedTabs();
       });
     }
     this.#tabChangeObserver.observe(this, { childList: true });
+    this.#tabChangeObserver.observe(gBrowser.tabContainer, {
+      attributes: true,
+      attributeFilter: ["orient"],
+    });
   }
 
   get color() {
@@ -375,6 +421,123 @@ export class MozTabbrowserTabGroup extends MozXULElement {
     this.toggleAttribute("hasactivetab", val);
   }
 
+  get hasRetainedTab() {
+    return this.hasAttribute("hasretainedtab");
+  }
+
+  get retainedTab() {
+    if (
+      !gBrowser.tabContainer.verticalMode ||
+      !this.collapsed ||
+      this.isBeingDragged
+    ) {
+      return null;
+    }
+    const workspaces = gBrowser.containerWorkspaces;
+    const tab = workspaces?.enabled
+      ? this.#retainedTabs.get(workspaces.activeUserContextId)
+      : [...this.#retainedTabs.values()].at(-1);
+    return tab?.isOpen &&
+      tab.group == this &&
+      !tab.hidden &&
+      !tab.workspaceHidden
+      ? tab
+      : null;
+  }
+
+  isTabRetained(tab) {
+    const retained = this.retainedTab;
+    return (
+      !!retained &&
+      (retained == tab ||
+        (retained.splitview && retained.splitview == tab.splitview))
+    );
+  }
+
+  #rememberRetainedTab(tab) {
+    const previous = this.#retainedTabs.get(tab.userContextId);
+    if (previous == tab) {
+      if (SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) != this.id) {
+        SessionStore.setCustomTabValue(tab, RETAINED_TAB_VALUE, this.id);
+      }
+      return;
+    }
+    if (previous?.isOpen) {
+      SessionStore.deleteCustomTabValue(previous, RETAINED_TAB_VALUE);
+    }
+    this.#retainedTabs.delete(tab.userContextId);
+    this.#retainedTabs.set(tab.userContextId, tab);
+    SessionStore.setCustomTabValue(tab, RETAINED_TAB_VALUE, this.id);
+  }
+
+  #clearRetainedTabs() {
+    for (const tab of this.tabs) {
+      if (
+        tab.isOpen &&
+        SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) == this.id
+      ) {
+        SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
+      }
+    }
+    this.#retainedTabs.clear();
+  }
+
+  #restoreRetainedTabs() {
+    for (const [id, tab] of this.#retainedTabs) {
+      if (!tab.isOpen || tab.group != this) {
+        this.#retainedTabs.delete(id);
+        if (
+          tab.isOpen &&
+          SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) == this.id
+        ) {
+          SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
+        }
+        if (!tab.group || tab.group == this) {
+          tab.removeAttribute("group-retained");
+          tab.splitview?.removeAttribute("group-retained");
+        }
+      }
+    }
+    for (const tab of this.tabs) {
+      if (
+        !tab.isOpen ||
+        SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) != this.id
+      ) {
+        continue;
+      }
+      const previous = this.#retainedTabs.get(tab.userContextId);
+      if (previous && previous != tab) {
+        if (!tab.selected) {
+          SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
+          continue;
+        }
+        SessionStore.deleteCustomTabValue(previous, RETAINED_TAB_VALUE);
+      }
+      this.#retainedTabs.set(tab.userContextId, tab);
+    }
+  }
+
+  #updateRetainedTabs() {
+    const retained = this.retainedTab;
+    for (const element of this.tabsAndSplitViews) {
+      element.toggleAttribute(
+        "group-retained",
+        !!retained && (element == retained || element == retained.splitview)
+      );
+      if (Tabbrowser.isSplitViewWrapper(element)) {
+        for (const tab of element.tabs) {
+          tab.removeAttribute("group-retained");
+        }
+      }
+    }
+    this.toggleAttribute("hasretainedtab", !!retained);
+    for (const tab of this.tabs) {
+      this.#updateTabAriaHidden(tab);
+    }
+    this.#updateOverflowLabel();
+    gBrowser.tabContainer._invalidateCachedVisibleTabs();
+  }
+
   get label() {
     return this.#label;
   }
@@ -417,12 +580,18 @@ export class MozTabbrowserTabGroup extends MozXULElement {
       }
     }
     this.toggleAttribute("collapsed", val);
+    if (!val) {
+      this.#clearRetainedTabs();
+    } else if (
+      gBrowser.tabContainer.verticalMode &&
+      gBrowser.selectedTab.group == this &&
+      !this.collapsedByDrag
+    ) {
+      this.#rememberRetainedTab(gBrowser.selectedTab);
+    }
+    this.#updateRetainedTabs();
     this.#updateLabelAriaAttributes();
     this.#updateTooltip();
-    this.#updateOverflowLabel();
-    for (const tab of this.tabs) {
-      this.#updateTabAriaHidden(tab);
-    }
     gBrowser.tabContainer.previewPanel?.deactivate(this, { force: true });
     const eventName = val ? "TabGroupCollapse" : "TabGroupExpand";
     this.dispatchEvent(new CustomEvent(eventName, { bubbles: true }));
@@ -500,6 +669,15 @@ export class MozTabbrowserTabGroup extends MozXULElement {
    * @param {MozTabbrowserTab} tab
    */
   #updateTabAriaHidden(tab) {
+    if (gBrowser.tabContainer.verticalMode) {
+      const element = tab.splitview ?? tab;
+      if (tab.group?.collapsed && !tab.group.isTabVisibleInGroup(tab)) {
+        element.setAttribute("aria-hidden", "true");
+      } else {
+        element.removeAttribute("aria-hidden");
+      }
+      return;
+    }
     if (tab.splitview) {
       if (
         tab.group?.collapsed &&
@@ -526,8 +704,13 @@ export class MozTabbrowserTabGroup extends MozXULElement {
       );
       let tabs = this.tabs.filter(tab => !tab.workspaceHidden);
       let tabCount = tabs.length;
-      const overflowOffset =
+      let overflowOffset =
         this.hasActiveTab && gBrowser.selectedTab.splitview ? 2 : 1;
+      if (this.collapsed && gBrowser.tabContainer.verticalMode) {
+        overflowOffset = tabs.filter(tab =>
+          this.isTabVisibleInGroup(tab)
+        ).length;
+      }
 
       this.toggleAttribute("hasmultipletabs", tabCount > overflowOffset);
 
@@ -560,6 +743,7 @@ export class MozTabbrowserTabGroup extends MozXULElement {
   }
 
   updateWorkspaceVisibility() {
+    this.#updateRetainedTabs();
     let tabs = this.tabs.filter(tab => !tab.workspaceHidden);
     for (let [index, tab] of tabs.entries()) {
       if (!tab.splitview) {
@@ -567,7 +751,6 @@ export class MozTabbrowserTabGroup extends MozXULElement {
         tab.setAttribute("aria-setsize", String(tabs.length));
       }
     }
-    this.#updateOverflowLabel();
     this.#updateLastTabOrSplitViewAttr();
   }
 
@@ -630,7 +813,8 @@ export class MozTabbrowserTabGroup extends MozXULElement {
       this.collapsed &&
       !tab.selected &&
       !tab.multiselected &&
-      !tab.splitview?.hasActiveTab
+      !tab.splitview?.hasActiveTab &&
+      !this.isTabRetained(tab)
     ) {
       return false;
     }
@@ -865,23 +1049,67 @@ export class MozTabbrowserTabGroup extends MozXULElement {
   on_TabSelect(event) {
     const { previousTab } = event.detail;
     let tab = /** @type {MozTabbrowserTab} */ (event.target);
+    if (tab.group != this && previousTab.group != this) {
+      return;
+    }
     this.hasActiveTab = tab.group === this;
-    if (this.hasActiveTab) {
-      this.#updateTabAriaHidden(tab);
+    if (
+      this.hasActiveTab &&
+      this.collapsed &&
+      gBrowser.tabContainer.verticalMode
+    ) {
+      this.#rememberRetainedTab(tab);
     }
-    if (previousTab.group === this) {
-      this.#updateTabAriaHidden(previousTab);
-    }
-
-    this.#updateOverflowLabel();
+    this.#updateRetainedTabs();
   }
 
-  on_SplitViewTabChange(event) {
-    for (const splitViewTab of event.target.tabs) {
-      this.#updateTabAriaHidden(splitViewTab);
-    }
+  on_SplitViewTabChange() {
+    this.#restoreRetainedTabs();
+    this.#updateRetainedTabs();
+  }
 
-    this.#updateOverflowLabel();
+  on_SSTabRestoring(event) {
+    if (event.target.group == this) {
+      if (this.collapsed) {
+        this.#restoreRetainedTabs();
+      } else {
+        this.#clearRetainedTabs();
+      }
+      this.#updateRetainedTabs();
+    }
+  }
+
+  on_SSWindowStateReady() {
+    if (this.collapsed) {
+      this.#restoreRetainedTabs();
+    } else {
+      this.#clearRetainedTabs();
+    }
+    if (
+      gBrowser.tabContainer.verticalMode &&
+      this.collapsed &&
+      gBrowser.selectedTab.group == this
+    ) {
+      this.#rememberRetainedTab(gBrowser.selectedTab);
+    }
+    this.#updateRetainedTabs();
+  }
+
+  on_TabClose(event) {
+    if (event.target.group == this) {
+      this.#restoreRetainedTabs();
+      this.#updateRetainedTabs();
+    }
+  }
+
+  on_TabShow(event) {
+    if (event.target.group == this) {
+      this.#updateRetainedTabs();
+    }
+  }
+
+  on_TabHide(event) {
+    this.on_TabShow(event);
   }
 
   /**

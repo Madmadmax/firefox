@@ -1045,8 +1045,28 @@ tab-split-view-wrapper[dragtarget] {
     }
   }
 
+  /* Group labels fill the row like tabs. */
+  &[expanded] {
+    @media -moz-pref("browser.nova.enabled") {
+      --tab-group-label-container-size: calc(var(--tab-min-height) + 2 * var(--vertical-tab-padding-block-delta, 0px));
+      --tab-group-label-hover-inset: 0px;
+    }
+
+    .tab-group-label {
+      align-self: stretch;
+      max-width: none;
+      text-align: start;
+      padding-inline: var(--tab-padding-inline);
+      border-radius: var(--tab-border-radius);
+    }
+
+    .tab-group-label-hover-highlight {
+      border-radius: var(--tab-border-radius);
+    }
+  }
+
   @media -moz-pref("browser.tabs.vertical.squircle") {
-    :is(.tab-background, tab-split-view-wrapper) {
+    :is(.tab-background, tab-split-view-wrapper, .tab-group-label, .tab-group-label-hover-highlight) {
       /* stylelint-disable-next-line property-no-unknown -- Supported by Gecko with layout.css.corner-shape.enabled. */
       corner-shape: squircle;
     }
@@ -1514,7 +1534,7 @@ tab-group > tab-split-view-wrapper {
     min-width: 200px;
   }
 
-  tab-group[collapsed] &:not([hasactivetab]) {
+  tab-group[collapsed] &:not([hasactivetab], [group-retained]) {
     min-width: 0 !important;
     max-width: 0 !important;
     max-height: 0 !important;
@@ -2050,10 +2070,10 @@ tab-group {
   }
 
   #tabbrowser-tabs[orient="horizontal"] &[movingtabgroup][collapsed] > tab-split-view-wrapper[hasactivetab],
-  #tabbrowser-tabs[orient="vertical"] &[movingtabgroup][collapsed] > .tabbrowser-tab[visuallyselected],
-  #tabbrowser-tabs[orient="vertical"] &[movingtabgroup][collapsed] > tab-split-view-wrapper[hasactivetab],
-  #tabbrowser-tabs[orient="vertical"] &[collapsed] > .tabbrowser-tab:not([visuallyselected], [multiselected]),
-  #tabbrowser-tabs[orient="vertical"] &[collapsed] > tab-split-view-wrapper:not([hasactivetab]) {
+  #tabbrowser-tabs[orient="vertical"] &[movingtabgroup][collapsed] > .tabbrowser-tab:is([visuallyselected], [group-retained]),
+  #tabbrowser-tabs[orient="vertical"] &[movingtabgroup][collapsed] > tab-split-view-wrapper:is([hasactivetab], [group-retained]),
+  #tabbrowser-tabs[orient="vertical"] &[collapsed] > .tabbrowser-tab:not([visuallyselected], [multiselected], [group-retained]),
+  #tabbrowser-tabs[orient="vertical"] &[collapsed] > tab-split-view-wrapper:not([hasactivetab], [group-retained]) {
     display: none;
   }
 
@@ -2088,7 +2108,7 @@ tab-group {
 
   #tabbrowser-tabs:is([orient="horizontal"], [orient="vertical"]:not([expanded])) tab-group:not([collapsed]) > &::after,
   #tabbrowser-tabs:is([orient="horizontal"], [orient="vertical"]:not([expanded])) tab-group[hasactivetab] > &::after,
-  #tabbrowser-tabs[orient="vertical"] tab-group[hasactivetab][hasmultipletabs] > &.tab-group-overflow-count-container::after {
+  #tabbrowser-tabs[orient="vertical"] tab-group:is([hasactivetab], [hasretainedtab])[hasmultipletabs] > &.tab-group-overflow-count-container::after {
     content: "";
     background-color: var(--tab-group-line-color);
     position: absolute;
@@ -2128,14 +2148,14 @@ tab-group {
     margin-block-start: var(--space-small);
 
     tab-group:not([collapsed]) > &,
-    tab-group[collapsed][hasactivetab] > & {
+    tab-group[collapsed]:is([hasactivetab], [hasretainedtab]) > & {
       padding-block-end: var(--space-small);
     }
 
     @media -moz-pref("browser.nova.enabled") {
       margin-block-start: calc(var(--tab-margin-block) + var(--tab-padding-block-start));
 
-      tab-group[collapsed]:not([hasactivetab]) > & {
+      tab-group[collapsed]:not([hasactivetab], [hasretainedtab]) > & {
         margin-block-end: calc(var(--tab-margin-block) + var(--tab-padding-block-end));
       }
     }
@@ -2150,7 +2170,7 @@ tab-group {
   }
 
   #tabbrowser-tabs[orient="vertical"] tab-group:not([collapsed]) > &::after,
-  #tabbrowser-tabs[orient="vertical"] tab-group[collapsed][hasactivetab]:not([movingtabgroup]) > &::after {
+  #tabbrowser-tabs[orient="vertical"] tab-group[collapsed]:is([hasactivetab], [hasretainedtab]):not([movingtabgroup]) > &::after {
     width: var(--tab-group-line-thickness);
     inset-block: 0;
     inset-inline: 2px auto;
@@ -2162,7 +2182,7 @@ tab-group {
 .tab-group-overflow-count-container {
   display: none;
 
-  #tabbrowser-tabs:not([movingtab]) tab-group[collapsed][hasmultipletabs][hasactivetab] > & {
+  #tabbrowser-tabs:not([movingtab]) tab-group[collapsed][hasmultipletabs]:is([hasactivetab], [hasretainedtab]) > & {
     display: flex;
   }
 
@@ -2196,7 +2216,7 @@ tab-group {
     border-end-end-radius: 1px;
   }
 
-  #tabbrowser-tabs[orient="vertical"] tab-group[hasactivetab][hasmultipletabs] > &::after {
+  #tabbrowser-tabs[orient="vertical"] tab-group:is([hasactivetab], [hasretainedtab])[hasmultipletabs] > &::after {
     width: var(--tab-group-line-thickness);
     inset-block: 0;
     border-end-start-radius: 1px;

@@ -2447,7 +2447,9 @@
           isTabGroupLabel(draggedTab) &&
           dropElement?.group &&
           (!dropElement.group.collapsed ||
-            (dropElement.group.collapsed && dropElement.group.hasActiveTab))
+            (dropElement.group.collapsed &&
+              (dropElement.group.hasActiveTab ||
+                dropElement.group.hasRetainedTab)))
         ) {
           let overlappedGroup = dropElement.group;
 

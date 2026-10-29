@@ -551,6 +551,9 @@ tags = "vertical-tabs"
 
 ["browser_tab_groups_list.js"]
 
+["browser_tab_groups_retained.js"]
+tags = "vertical-tabs"
+
 ["browser_tab_groups_tabContextMenu.js"]
 tags = "vertical-tabs"
 
