@@ -68,6 +68,22 @@ export class BrowserDOMWindow {
     win.browserDOMWindow = null;
   }
 
+  #getExternalUserContextId(uri, win) {
+    const defaultId = Ci.nsIScriptSecurityManager.DEFAULT_USER_CONTEXT_ID;
+    if (
+      Services.prefs.getBoolPref(
+        "browser.link.force_default_user_context_id_for_external_opens",
+        false
+      )
+    ) {
+      return defaultId;
+    }
+    let workspaces = win.gBrowser?.containerWorkspaces;
+    return workspaces?.enabled
+      ? workspaces.activeUserContextId
+      : (lazy.URILoadingHelper.guessUserContextId(uri) ?? defaultId);
+  }
+
   /**
    * @param {nsIURI} aURI
    * @param {nsIReferrerInfo} aReferrerInfo
@@ -119,6 +135,10 @@ export class BrowserDOMWindow {
     if (!win) {
       // we couldn't find a suitable window, a new one needs to be opened.
       return null;
+    }
+
+    if (aIsExternal) {
+      aUserContextId = this.#getExternalUserContextId(aURI, win);
     }
 
     if (
@@ -253,16 +273,6 @@ export class BrowserDOMWindow {
     var forceAllowDataURI = !!(
       aFlags & Ci.nsIBrowserDOMWindow.OPEN_FORCE_ALLOW_DATA_URI
     );
-    var guessUserContextIdEnabled =
-      isExternal &&
-      !Services.prefs.getBoolPref(
-        "browser.link.force_default_user_context_id_for_external_opens",
-        false
-      );
-    var openingUserContextId =
-      (guessUserContextIdEnabled &&
-        lazy.URILoadingHelper.guessUserContextId(aURI)) ||
-      Ci.nsIScriptSecurityManager.DEFAULT_USER_CONTEXT_ID;
 
     if (aOpenWindowInfo && isExternal) {
       console.error(
@@ -353,7 +363,9 @@ export class BrowserDOMWindow {
             null,
             null,
             null,
-            null,
+            isExternal && this.win.gBrowser?.containerWorkspaces?.enabled
+              ? this.#getExternalUserContextId(aURI, this.win)
+              : null,
             null,
             null,
             aTriggeringPrincipal,
@@ -385,7 +397,7 @@ export class BrowserDOMWindow {
         let forceNotRemote = aOpenWindowInfo && !aOpenWindowInfo.isRemote;
         let userContextId = aOpenWindowInfo
           ? aOpenWindowInfo.originAttributes.userContextId
-          : openingUserContextId;
+          : Ci.nsIScriptSecurityManager.DEFAULT_USER_CONTEXT_ID;
         let browser = this.#openURIInNewTab(
           aURI,
           referrerInfo,

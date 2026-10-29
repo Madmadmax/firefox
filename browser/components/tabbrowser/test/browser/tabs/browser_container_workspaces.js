@@ -579,3 +579,131 @@ add_task(async function test_duplicate_and_reopened_workspace_selection() {
     ContextualIdentityService.remove(identity.userContextId);
   }
 });
+
+add_task(async function test_external_links_use_active_workspace() {
+  const forceDefaultPref =
+    "browser.link.force_default_user_context_id_for_external_opens";
+  const { URILoadingHelper } = ChromeUtils.importESModule(
+    "resource:///modules/URILoadingHelper.sys.mjs"
+  );
+  const { sinon } = ChromeUtils.importESModule(
+    "resource://testing-common/Sinon.sys.mjs"
+  );
+  await SpecialPowers.pushPrefEnv({ set: [[forceDefaultPref, false]] });
+  let guessing = ContextualIdentityService.create(
+    "External guess",
+    "fruit",
+    "green"
+  );
+  let active = ContextualIdentityService.create(
+    "External active",
+    "briefcase",
+    "red"
+  );
+  let win = await BrowserTestUtils.openNewBrowserWindow();
+  const url =
+    "https://example.com/browser/browser/components/tabbrowser/test/browser/tabs/dummy_page.html";
+  let guessStub = sinon
+    .stub(URILoadingHelper, "guessUserContextId")
+    .returns(guessing.userContextId);
+  let sequence = 0;
+  try {
+    let browser = win.gBrowser;
+    let controller = browser.containerWorkspaces;
+    await TestUtils.waitForCondition(() => controller.enabled);
+    async function openLink(flags = Ci.nsIBrowserDOMWindow.OPEN_EXTERNAL) {
+      let uri = Services.io.newURI(url + "?external=" + ++sequence);
+      let context = win.browserDOMWindow.openURI(
+        uri,
+        null,
+        Ci.nsIBrowserDOMWindow.OPEN_NEWTAB,
+        flags,
+        Services.scriptSecurityManager.getSystemPrincipal()
+      );
+      await BrowserTestUtils.browserLoaded(context.embedderElement);
+      return browser.getTabForBrowser(context.embedderElement);
+    }
+    controller.switchTo(active.userContextId);
+    let tab = await openLink();
+    Assert.equal(
+      tab.userContextId,
+      active.userContextId,
+      "An external link uses the active workspace instead of the host guess"
+    );
+    Assert.equal(
+      tab.linkedBrowser.contentPrincipal.originAttributes.userContextId,
+      active.userContextId,
+      "The page loads in the matching cookie container"
+    );
+    Assert.equal(controller.activeUserContextId, active.userContextId);
+
+    controller.switchTo(0);
+    tab = await openLink();
+    Assert.equal(
+      tab.userContextId,
+      0,
+      "No Container also takes precedence over guessing"
+    );
+
+    controller.switchTo(active.userContextId);
+    let newWindowURI = url + "?new-window";
+    let opened = BrowserTestUtils.waitForNewWindow({ url: newWindowURI });
+    win.browserDOMWindow.openURI(
+      Services.io.newURI(newWindowURI),
+      null,
+      Ci.nsIBrowserDOMWindow.OPEN_NEWWINDOW,
+      Ci.nsIBrowserDOMWindow.OPEN_EXTERNAL,
+      Services.scriptSecurityManager.getSystemPrincipal()
+    );
+    let newWindow = await opened;
+    try {
+      Assert.equal(
+        newWindow.gBrowser.selectedTab.userContextId,
+        active.userContextId,
+        "An external link in a new window inherits the active container"
+      );
+    } finally {
+      await BrowserTestUtils.closeWindow(newWindow);
+    }
+
+    await SpecialPowers.pushPrefEnv({ set: [[forceDefaultPref, true]] });
+    try {
+      tab = await openLink();
+      Assert.equal(
+        tab.userContextId,
+        0,
+        "An explicit force-default preference is respected"
+      );
+    } finally {
+      await SpecialPowers.popPrefEnv();
+    }
+    controller.switchTo(active.userContextId);
+    tab = await openLink(0);
+    Assert.equal(
+      tab.userContextId,
+      0,
+      "Internal calls keep their existing explicit default"
+    );
+
+    await SpecialPowers.pushPrefEnv({ set: [["sidebar.verticalTabs", false]] });
+    try {
+      await TestUtils.waitForCondition(() => !controller.enabled);
+      let expected =
+        URILoadingHelper.guessUserContextId(Services.io.newURI(url)) || 0;
+      tab = await openLink();
+      Assert.equal(
+        tab.userContextId,
+        expected,
+        "Horizontal mode retains host guessing"
+      );
+    } finally {
+      await SpecialPowers.popPrefEnv();
+    }
+  } finally {
+    guessStub.restore();
+    await BrowserTestUtils.closeWindow(win);
+    ContextualIdentityService.remove(guessing.userContextId);
+    ContextualIdentityService.remove(active.userContextId);
+    await SpecialPowers.popPrefEnv();
+  }
+});

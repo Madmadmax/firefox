@@ -8,6 +8,8 @@ const lazy = XPCOMUtils.declareLazy({
   ContextualIdentityService:
     "moz-src:///toolkit/components/contextualidentity/ContextualIdentityService.sys.mjs",
   PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
+  SessionStartup:
+    "moz-src:///browser/components/sessionstore/SessionStartup.sys.mjs",
   SessionStore:
     "moz-src:///browser/components/sessionstore/SessionStore.sys.mjs",
 });
@@ -47,6 +49,63 @@ export class ContainerWorkspaces {
   #activeUserContextId = 0;
   #lastSelectedTabs = new Map();
   #orientationObserver;
+
+  static prepareStartupURI(win, uri) {
+    const extraOptions = win.arguments?.[1];
+    const external =
+      Array.isArray(uri) ||
+      (extraOptions instanceof Ci.nsIPropertyBag2 &&
+        extraOptions.hasKey("fromExternal") &&
+        extraOptions.getPropertyAsBool("fromExternal"));
+    if (
+      !external ||
+      win.arguments[5] != null ||
+      win.arguments[11] ||
+      !Services.prefs.getBoolPref("sidebar.verticalTabs", false) ||
+      !Services.prefs.getBoolPref("privacy.userContext.enabled", false) ||
+      Services.prefs.getBoolPref(
+        "browser.link.force_default_user_context_id_for_external_opens",
+        false
+      ) ||
+      lazy.PrivateBrowsingUtils.isWindowPrivate(win)
+    ) {
+      return uri;
+    }
+    return lazy.SessionStartup.onceInitialized.then(() => {
+      if (win.closed) {
+        return null;
+      }
+      let savedWindow = lazy.SessionStartup.willRestore()
+        ? lazy.SessionStartup.state?.windows?.[0]
+        : null;
+      let id = Number(
+        savedWindow?.extData?.[WINDOW_VALUE] ??
+          savedWindow?.tabs?.[(savedWindow.selected || 1) - 1]?.userContextId ??
+          0
+      );
+      if (
+        !Number.isInteger(id) ||
+        (id && !lazy.ContextualIdentityService.getPublicIdentityFromId(id))
+      ) {
+        id = 0;
+      }
+      win.arguments[5] = id;
+      const browser = win.gBrowser;
+      const initialTab = browser.selectedTab;
+      if (
+        initialTab.userContextId != id &&
+        browser.tabs.length == 1 &&
+        initialTab.linkedBrowser.currentURI.spec == "about:blank"
+      ) {
+        // Prepare the container before SessionStore snapshots command-line tabs.
+        browser.selectedTab = browser.addTrustedTab("about:blank", {
+          userContextId: id,
+        });
+        browser.removeTab(initialTab, { animate: false });
+      }
+      return uri;
+    });
+  }
 
   constructor(browser) {
     this.#browser = browser;
