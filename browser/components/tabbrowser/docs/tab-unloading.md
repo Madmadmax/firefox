@@ -28,6 +28,30 @@ larger memory and more processes that will be terminated by tab unloading.
 You may disable the feature by setting the preference
 `browser.tabs.unloadOnLowMemory` to `false`.
 
+## Unloading inactive tabs
+
+Independently of memory pressure, the tab unloader also unloads tabs that have
+not been visited for a while. Every five minutes, and right after the system
+wakes from sleep, it checks every loaded tab in all windows and unloads those
+whose last access is older than `browser.tabs.unloadAfterInactiveMs`
+milliseconds (twelve hours by default). Setting the preference to `0` disables
+this check.
+
+The age of a tab is its last access time: it does not grow while the tab is
+selected, it starts when the user leaves the tab, and it is kept across
+session restores. Time spent asleep counts towards it.
+
+The check skips the same tabs as the low-memory unloader (media,
+Picture-in-Picture, WebRTC, undiscardable and private tabs) and, in addition,
+the selected tab of each window, the visible partner of the selected tab in a
+split view, tabs whose `beforeunload` handlers prevent unloading, tabs with
+open dialogs, `about:` pages
+and other non-remote pages. Pinned tabs are unloaded too.
+The state of each tab is flushed before unloading and all conditions are
+checked again afterwards, so a tab that is selected or starts playing media
+meanwhile stays loaded. Only one pass runs at a time, shared with the
+low-memory unloader.
+
 ## <about:unloads>
 
 The <about:unloads> page shows how Firefox prioritizes tabs and which tab will

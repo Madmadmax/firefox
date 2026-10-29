@@ -1158,6 +1158,7 @@ pref("browser.tabs.tabMinWidth", 76);
 pref("browser.tabs.vertical.labelFontSizeDelta", 1);
 // Vertical tab corner radius in px, -1 keeps the theme radius.
 pref("browser.tabs.vertical.borderRadius", 6);
+// Whether vertical tab corners use corner-shape: squircle instead of round.
 pref("browser.tabs.vertical.squircle", true);
 // Extra space in expanded vertical tabs, in px: above and below the content,
 // and between the icon and the label.
@@ -1247,6 +1248,8 @@ pref("security.allow_parent_unrestricted_js_loads", false);
     pref("browser.tabs.unloadOnLowMemory", false);
 #endif
 
+// Tab Unloader unloads background tabs that have not been visited for this
+// long (in milliseconds), independently of memory pressure. 0 disables it.
 pref("browser.tabs.unloadAfterInactiveMs", 43200000);
 
 // Tab Unloader does not unload tabs whose last inactive period is longer than
