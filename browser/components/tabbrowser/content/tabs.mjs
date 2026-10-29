@@ -1051,6 +1051,19 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
   }
 
   /**
+   * Number of pinned tabs at the start of `dragAndDropElements`. Unlike
+   * `gBrowser.pinnedTabCount`, hidden pinned tabs are not counted, so this
+   * can be compared with element indices.
+   *
+   * @returns {number}
+   */
+  get visiblePinnedTabCount() {
+    let elements = this.dragAndDropElements;
+    let index = elements.findIndex(element => !element.pinned);
+    return index == -1 ? elements.length : index;
+  }
+
+  /**
    * Moves the ARIA focus in the tab strip left or right, as appropriate, to
    * the next tab or tab group label.
    *
@@ -1370,9 +1383,7 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
         };
         // See bug 2007766, we need to find the first tab that isn't
         // inside a split view, because those can be narrower than the threshold.
-        let tab = this.visibleTabs
-          .slice(gBrowser.pinnedTabCount)
-          .find(t => !t.splitview);
+        let tab = this.visibleTabs.find(t => !t.pinned && !t.splitview);
         if (tab && rect(tab).width <= this._tabClipWidth) {
           this.setAttribute("closebuttons", "activetab");
         } else {

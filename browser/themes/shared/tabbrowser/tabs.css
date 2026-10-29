@@ -2907,6 +2907,14 @@ tab-group {
   }
 }
 
+:root[container-workspaces] #pinned-tabs-container[workspace-empty] {
+  display: none;
+
+  & + #vertical-pinned-tabs-splitter {
+    display: none;
+  }
+}
+
 #vertical-pinned-tabs-splitter {
   display: block;
   border: none;
