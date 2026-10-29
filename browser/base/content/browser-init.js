@@ -815,11 +815,29 @@ var gBrowserInit = {
   },
 
   _handleURIToLoad() {
-    this._callWithURIToLoad(uriToLoad => {
+    this._callWithURIToLoad(async uriToLoad => {
       if (!uriToLoad) {
         // We don't check whether window.arguments[5] (userContextId) is set
         // because tabbrowser.js takes care of that for the initial tab.
         return;
+      }
+
+      const startupExtraOptions = window.arguments[1];
+      const startupFromExternal =
+        Array.isArray(uriToLoad) ||
+        (startupExtraOptions instanceof Ci.nsIPropertyBag2 &&
+          startupExtraOptions.hasKey("fromExternal") &&
+          startupExtraOptions.getPropertyAsBool("fromExternal"));
+      if (
+        startupFromExternal &&
+        Services.prefs.getBoolPref("sidebar.verticalTabs", false) &&
+        Services.prefs.getBoolPref("privacy.userContext.enabled", false) &&
+        !PrivateBrowsingUtils.isWindowPrivate(window)
+      ) {
+        await SessionStore.promiseAllWindowsRestored;
+        if (window.closed) {
+          return;
+        }
       }
 
       // We don't check if uriToLoad is a XULElement because this case has
@@ -1024,14 +1042,17 @@ var gBrowserInit = {
         if (uri instanceof Ci.nsIArray) {
           // Transform the nsIArray of nsISupportsString's into a JS Array of
           // JS strings.
-          return Array.from(
+          uri = Array.from(
             uri.enumerate(Ci.nsISupportsString),
             supportStr => supportStr.data
           );
         } else if (uri instanceof Ci.nsISupportsString) {
-          return uri.data;
+          uri = uri.data;
         }
-        return uri;
+        const { ContainerWorkspaces } = ChromeUtils.importESModule(
+          "moz-src:///browser/components/tabbrowser/ContainerWorkspaces.sys.mjs"
+        );
+        return ContainerWorkspaces.prepareStartupURI(window, uri);
       }
 
       // The URI appears to be the the homepage. We want to load it only if
