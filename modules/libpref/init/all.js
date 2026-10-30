@@ -4209,6 +4209,8 @@ pref("extensions.formautofill.heuristics.refillOnSiteClearingFields.timeout", 50
 pref("extensions.formautofill.heuristics.autofillSameOriginWithTop", true);
 
 pref("toolkit.osKeyStore.loglevel", "Warn");
+// Rebranded personal builds can retain access to their existing encrypted data.
+pref("toolkit.osKeyStore.storeLabel", "");
 
 pref("extensions.formautofill.supportRTL", false);
 

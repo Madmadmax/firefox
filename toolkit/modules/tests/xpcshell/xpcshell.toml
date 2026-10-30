@@ -184,6 +184,10 @@ tags = "os_integration"
 ["test_osKeyStore.js"]
 tags = "os_integration"
 
+["test_osKeyStore_default_label.js"]
+
+["test_osKeyStore_legacy_label.js"]
+
 ["test_propertyListsUtils.js"]
 run-if = [
   "os == 'mac'",

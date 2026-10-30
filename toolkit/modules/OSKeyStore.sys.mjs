@@ -40,7 +40,9 @@ export var OSKeyStore = {
    * This is a limitation of the interface exposed by macOS. Notably, both
    * Chrome and Safari suffer the same shortcoming.
    */
-  STORE_LABEL: AppConstants.MOZ_APP_BASENAME + " Encrypted Storage",
+  STORE_LABEL:
+    Services.prefs.getStringPref("toolkit.osKeyStore.storeLabel", "") ||
+    AppConstants.MOZ_APP_BASENAME + " Encrypted Storage",
 
   /**
    * Consider the module is initialized as locked. OS might unlock without a
