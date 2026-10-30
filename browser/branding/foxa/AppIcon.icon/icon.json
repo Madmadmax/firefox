@@ -1,0 +1,27 @@
+{
+  "fill": {
+    "solid": "srgb:0.96863,0.96863,0.97255,0.72000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": false,
+          "image-name": "fox.png",
+          "name": "FoxA"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.15
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": ["macOS"]
+  }
+}
