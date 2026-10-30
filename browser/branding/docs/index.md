@@ -17,4 +17,5 @@ Brandings are stored in the {searchfox}`branding subdirectory <browser/branding>
 
 ```{toctree}
 UpdatingMacIcons
+FoxA
 ```
