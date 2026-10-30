@@ -313,6 +313,7 @@
   skin/classic/browser/tabbrowser/content-area.css             (../shared/tabbrowser/content-area.css)
   skin/classic/browser/tabbrowser/crashed.svg                  (../shared/tabbrowser/crashed.svg)
   skin/classic/browser/tabbrowser/ctrlTab.css                  (../shared/tabbrowser/ctrlTab.css)
+  skin/classic/browser/tabbrowser/folder-open.svg              (../shared/tabbrowser/folder-open.svg)
   skin/classic/browser/tabbrowser/fullscreen-and-pointerlock.css (../shared/tabbrowser/fullscreen-and-pointerlock.css)
   skin/classic/browser/tabbrowser/loading.svg                  (../shared/tabbrowser/loading.svg)
   skin/classic/browser/tabbrowser/tab-audio-playing-small.svg  (../shared/tabbrowser/tab-audio-playing-small.svg)

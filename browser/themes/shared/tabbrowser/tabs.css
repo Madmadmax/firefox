@@ -1073,6 +1073,81 @@ tab-split-view-wrapper[dragtarget] {
   }
 }
 
+#tabbrowser-tabs[orient="vertical"] tab-group {
+  --tab-group-line-color: transparent;
+
+  .tab-group-label {
+    color: var(--tab-text-color);
+    background-color: var(--tab-background-color);
+    background-image: url("chrome://global/skin/icons/folder.svg");
+    background-repeat: no-repeat;
+    background-size: var(--icon-size);
+    background-position: var(--tab-padding-inline) center;
+    -moz-context-properties: fill, fill-opacity;
+    fill: currentColor;
+    font-weight: inherit;
+    outline: var(--tab-border);
+    outline-color: var(--tab-border-color);
+    outline-offset: var(--tab-outline-offset);
+
+    &:dir(rtl) {
+      background-position-x: right var(--tab-padding-inline);
+    }
+  }
+
+  .tab-group-label-hover-highlight,
+  #tabbrowser-tabs[expanded] &[collapsed]:not([movingtabgroup]) .tab-group-label-hover-highlight:hover,
+  #tabbrowser-tabs[expanded] &[previewpanelactive] .tab-group-label-hover-highlight {
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  &:not([collapsed]) .tab-group-label {
+    background-image: url("chrome://browser/skin/tabbrowser/folder-open.svg");
+  }
+
+  &:not([collapsed][hasactivetab]) .tab-group-label:hover {
+    color: var(--tab-text-color-hover);
+    background-color: var(--tab-background-color-hover);
+    outline-color: var(--tab-border-color-hover);
+  }
+
+  &[collapsed][hasactivetab] .tab-group-label {
+    color-scheme: var(--tab-selected-color-scheme);
+    color: var(--tab-text-color-selected);
+    background-color: var(--tab-background-color-selected);
+    outline-color: var(--tab-border-color-selected);
+    box-shadow: var(--tab-box-shadow-selected);
+  }
+
+  .tab-group-label[dragover-groupTarget],
+  .tab-group-label.tablist-keyboard-focus {
+    outline: var(--focus-outline);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  .tab-group-overflow-count {
+    color: var(--tab-text-color);
+    background-color: var(--tab-background-color);
+  }
+
+  #tabbrowser-tabs[expanded] & .tab-group-label {
+    padding-inline-start: calc(
+      var(--tab-padding-inline) + var(--icon-size) + var(--tab-icon-margin-inline-end) + var(--vertical-tab-icon-label-gap-delta, 0px)
+    );
+  }
+
+  #tabbrowser-tabs:not([expanded]) & .tab-group-label {
+    background-position: center;
+    padding-inline: 0;
+    font-size: 0;
+
+    &::first-letter {
+      font-size: 0;
+    }
+  }
+}
+
 .tab-close-button {
   -moz-context-properties: fill, fill-opacity;
   margin-inline-end: calc(var(--tab-padding-inline) / -2);
