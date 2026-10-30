@@ -1077,12 +1077,13 @@ tab-split-view-wrapper[dragtarget] {
   --tab-group-line-color: transparent;
 
   .tab-group-label {
+    --tab-group-icon-inset: var(--tab-padding-inline);
     color: var(--tab-text-color);
     background-color: var(--tab-background-color);
     background-image: url("chrome://global/skin/icons/folder.svg");
     background-repeat: no-repeat;
     background-size: var(--icon-size);
-    background-position: var(--tab-padding-inline) center;
+    background-position: var(--tab-group-icon-inset) center;
     -moz-context-properties: fill, fill-opacity;
     fill: currentColor;
     font-weight: inherit;
@@ -1091,7 +1092,7 @@ tab-split-view-wrapper[dragtarget] {
     outline-offset: var(--tab-outline-offset);
 
     &:dir(rtl) {
-      background-position-x: right var(--tab-padding-inline);
+      background-position-x: right var(--tab-group-icon-inset);
     }
   }
 
@@ -1132,8 +1133,9 @@ tab-split-view-wrapper[dragtarget] {
   }
 
   #tabbrowser-tabs[expanded] & .tab-group-label {
+    --tab-group-icon-inset: calc(var(--tab-padding-inline) - var(--space-medium));
     padding-inline-start: calc(
-      var(--tab-padding-inline) + var(--icon-size) + var(--tab-icon-margin-inline-end) + var(--vertical-tab-icon-label-gap-delta, 0px)
+      var(--tab-group-icon-inset) + var(--icon-size) + var(--tab-icon-margin-inline-end) + var(--vertical-tab-icon-label-gap-delta, 0px)
     );
   }
 
