@@ -18,7 +18,7 @@ import "chrome://browser/content/sidebar/sidebar-opentabs-preview.mjs";
 // eslint-disable-next-line import-x/no-unassigned-import
 import "chrome://browser/content/sidebar/sidebar-pins-promo.mjs";
 
-// eslint-disable-next-line import/no-unassigned-import
+// eslint-disable-next-line import-x/no-unassigned-import
 import "chrome://browser/content/sidebar/sidebar-workspace-switcher.mjs";
 
 const lazy = {};
