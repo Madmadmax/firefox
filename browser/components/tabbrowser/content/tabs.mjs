@@ -277,6 +277,11 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
       this.removeAttribute("overflow");
       this.#updateTabMinWidth();
       this.pinnedTabsContainer?.setAttribute("orient", newValue);
+      for (const tab of this.pinnedTabsContainer?.querySelectorAll(
+        "tab[listpinned]"
+      ) || []) {
+        tab.updateListPinnedCloseButton();
+      }
     }
     super.attributeChangedCallback(attrName, oldValue, newValue);
   }
@@ -1181,6 +1186,7 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
   isContainerVerticalPinnedGrid(tab) {
     return (
       tab.pinned &&
+      !tab.listPinned &&
       this.verticalMode &&
       this.hasAttribute("expanded") &&
       !this.expandOnHover

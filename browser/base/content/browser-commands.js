@@ -273,6 +273,9 @@ var BrowserCommands = {
             relatedToCurrent,
             resolveOnNewTabCreated: resolve,
           };
+          if (gBrowser.tabContainer.verticalMode && !werePassedURL) {
+            options.tabIndex = gBrowser.pinnedTabCount;
+          }
           if (gBrowser.containerWorkspaces.enabled) {
             options.userContextId =
               gBrowser.containerWorkspaces.activeUserContextId;
@@ -365,6 +368,11 @@ var BrowserCommands = {
     // If we're not a browser window, just close the window.
     if (window.location.href != AppConstants.BROWSER_CHROME_URL) {
       closeWindow(true);
+      return;
+    }
+
+    if (gBrowser.tabContainer.verticalMode && gBrowser.selectedTab.listPinned) {
+      gBrowser.unloadListPinnedTab(gBrowser.selectedTab);
       return;
     }
 

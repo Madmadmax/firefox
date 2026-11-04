@@ -901,6 +901,12 @@ export class MozTabbrowserTabGroup extends MozXULElement {
    *   Optional context to record for metrics purposes.
    */
   addTabs(tabsOrSplitViews, metricsContext = null) {
+    tabsOrSplitViews = tabsOrSplitViews.filter(
+      element => !Tabbrowser.isTab(element) || !element.listPinned
+    );
+    if (!tabsOrSplitViews.length) {
+      return;
+    }
     if (metricsContext?.isUserTriggered) {
       let tabCount = tabsOrSplitViews.reduce(
         (n, item) =>

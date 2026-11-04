@@ -373,7 +373,7 @@ add_task(async function test_toggle_vertical_tabs() {
   );
   toolbarContextMenu.hidePopup();
 
-  let newTabButton = document.getElementById("tabs-newtab-button");
+  let newTabButton = document.getElementById("vertical-tabs-newtab-button");
   info("Open a new tab using the new tab button.");
   EventUtils.synthesizeMouseAtCenter(newTabButton, {});
   is(gBrowser.tabs.length, 5, "Tabstrip now has six tabs");
@@ -389,7 +389,7 @@ add_task(async function test_toggle_vertical_tabs() {
   TelemetryTestUtils.assertKeyedScalar(
     keyedScalars,
     "browser.ui.interaction.vertical_tabs_container",
-    "tabs-newtab-button",
+    "vertical-tabs-newtab-button",
     1
   );
 
@@ -473,6 +473,10 @@ add_task(async function test_vertical_tabs_overflow() {
 
   info("Open a new tab using the new tab button.");
   const newTabButton = document.getElementById("vertical-tabs-newtab-button");
+  const previousClicks =
+    TelemetryTestUtils.getProcessScalars("parent", true)[
+      "browser.ui.interaction.vertical_tabs_container"
+    ]?.["vertical-tabs-newtab-button"] ?? 0;
   ok(
     BrowserTestUtils.isVisible(newTabButton),
     "New tab button is visible while tabs are overflowing."
@@ -485,7 +489,7 @@ add_task(async function test_vertical_tabs_overflow() {
     keyedScalars,
     "browser.ui.interaction.vertical_tabs_container",
     "vertical-tabs-newtab-button",
-    1
+    previousClicks + 1
   );
 
   cleanUpExtraTabs();

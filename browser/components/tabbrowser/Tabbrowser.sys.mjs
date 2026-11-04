@@ -263,6 +263,7 @@ export class Tabbrowser {
     this.documentGlobal.addEventListener("TabUngrouped", this);
     this.documentGlobal.addEventListener("TabSplitViewActivate", this);
     this.documentGlobal.addEventListener("TabSplitViewDeactivate", this);
+    this.tabContainer.addEventListener("SSTabRestoring", this);
 
     this.documentGlobal
       .matchMedia("(prefers-color-scheme: dark)")
@@ -649,6 +650,17 @@ export class Tabbrowser {
       }
     }
     return i;
+  }
+
+  get iconPinnedTabCount() {
+    let count = 0;
+    for (const tab of this.tabs) {
+      if (!tab.pinned || tab.listPinned) {
+        break;
+      }
+      count++;
+    }
+    return count;
   }
 
   setSelectedTab(val, metricsContext = null) {
@@ -1406,7 +1418,10 @@ export class Tabbrowser {
         "pinned-tabs-container-periphery"
       );
       // If periphery is null, append to end
-      this.pinnedTabsContainer.insertBefore(aTab, periphery);
+      this.pinnedTabsContainer.insertBefore(
+        aTab,
+        this.tabs.find(tab => tab.listPinned) || periphery
+      );
     });
 
     aTab.setAttribute("pinned", "true");
@@ -1429,6 +1444,10 @@ export class Tabbrowser {
       return;
     }
 
+    if (aTab.hasAttribute("listpinned")) {
+      this.#setListPinned(aTab, false);
+    }
+
     this.#handleTabMove(aTab, () => {
       // we remove this attribute first, so that allTabs represents
       // the moving of a tab from the pinned tabs container
@@ -1440,6 +1459,151 @@ export class Tabbrowser {
     aTab.style.marginInlineStart = "";
     this.#updateTabBarForPinnedTabs();
     this.#notifyPinnedStatus(aTab, { metricsContext });
+  }
+
+  #setListPinned(tab, value) {
+    tab.toggleAttribute("listpinned", value);
+    tab.updateListPinnedCloseButton();
+    if (value) {
+      lazy.SessionStore.setCustomTabValue(tab, "listPinned", "true");
+    } else {
+      lazy.SessionStore.deleteCustomTabValue(tab, "listPinned");
+    }
+    this._tabAttrModified(tab, ["listpinned"]);
+  }
+
+  pinTabAsIcon(tab, options = {}) {
+    if (!tab.listPinned) {
+      this.pinTab(tab, options);
+      return;
+    }
+    this.#setListPinned(tab, false);
+    this.#handleTabMove(
+      tab,
+      () =>
+        this.pinnedTabsContainer.insertBefore(
+          tab,
+          this.tabs.find(candidate => candidate.listPinned) ||
+            this.document.getElementById("pinned-tabs-container-periphery")
+        ),
+      options
+    );
+  }
+
+  pinTabToList(tab) {
+    if (
+      !tab.isOpen ||
+      tab.splitview ||
+      tab == this.documentGlobal.FirefoxViewHandler.tab
+    ) {
+      return false;
+    }
+    if (tab.listPinned) {
+      return true;
+    }
+    if (!tab.pinned) {
+      this.pinTab(tab);
+    }
+    this.#setListPinned(tab, true);
+    this.moveTabTo(tab, { tabIndex: this.pinnedTabCount - 1 });
+    return true;
+  }
+
+  unpinTabFromList(tab) {
+    if (tab.listPinned) {
+      this.unpinTab(tab);
+    }
+  }
+
+  on_SSTabRestoring({ target: tab }) {
+    if (lazy.SessionStore.getCustomTabValue(tab, "listPinned") == "true") {
+      if (!tab.listPinned) {
+        this.pinTabToList(tab);
+      }
+    } else if (tab.hasAttribute("listpinned")) {
+      if (tab.pinned) {
+        this.pinTabAsIcon(tab);
+      } else {
+        this.#setListPinned(tab, false);
+      }
+    }
+  }
+
+  #unloadingListTabs = new WeakSet();
+
+  #isListPinnedLink(openerTab, pinned) {
+    return (
+      this.tabContainer.verticalMode &&
+      openerTab?.listPinned &&
+      openerTab.container == this.tabContainer &&
+      !pinned
+    );
+  }
+
+  async unloadListPinnedTab(tab) {
+    if (!tab.listPinned || this.#unloadingListTabs.has(tab)) {
+      return false;
+    }
+    this.#unloadingListTabs.add(tab);
+    try {
+      await this.prepareDiscardBrowser(tab);
+      if (!tab.isOpen || !tab.listPinned) {
+        return false;
+      }
+      const wasSelected = tab.selected;
+      let replacement;
+      let createdReplacement;
+      if (tab.selected) {
+        const tabs = this.visibleTabs;
+        const index = tabs.indexOf(tab);
+        const next = [...tabs.slice(index + 1), ...tabs.slice(0, index)].find(
+          candidate =>
+            candidate.userContextId == tab.userContextId &&
+            candidate.linkedPanel &&
+            !candidate.hasAttribute("pending")
+        );
+        if (!next) {
+          createdReplacement = this.addTrustedTab(
+            this.documentGlobal.BROWSER_NEW_TAB_URL,
+            {
+              userContextId: tab.userContextId,
+              tabIndex: this.pinnedTabCount,
+            }
+          );
+        }
+        replacement = next || createdReplacement;
+        this.selectedTab = replacement;
+      }
+      if (this._switcher) {
+        await new Promise(resolve => {
+          const finish = () => {
+            this.removeEventListener("TabSwitchDone", finish);
+            this.documentGlobal.removeEventListener("unload", finish);
+            resolve();
+          };
+          this.addEventListener("TabSwitchDone", finish);
+          this.documentGlobal.addEventListener("unload", finish, {
+            once: true,
+          });
+        });
+      }
+      if (!tab.isOpen || !tab.listPinned || tab.selected) {
+        return false;
+      }
+      const discarded = this.discardBrowser(tab, {
+        renderDiscarded: true,
+        skipOnClose: true,
+      });
+      if (!discarded && wasSelected && this.selectedTab == replacement) {
+        this.selectedTab = tab;
+        if (createdReplacement) {
+          this.removeTab(createdReplacement, { animate: false });
+        }
+      }
+      return discarded;
+    } finally {
+      this.#unloadingListTabs.delete(tab);
+    }
   }
 
   previewTab(aTab, aCallback) {
@@ -3770,6 +3934,8 @@ export class Tabbrowser {
    *   tab for a foreground tab, and to none for a background tab.
    * @param {boolean} [options.pinned]
    *   Open the tab pinned.
+   * @param {boolean} [options.listPinned]
+   *   Restore a pinned tab using the full-width list presentation.
    * @param {nsIInputStream} [options.postData]
    *   Data to post as part of the request.
    * @param {string} [options.preferredRemoteType]
@@ -3849,6 +4015,7 @@ export class Tabbrowser {
       originStoragePrincipal,
       ownerTab,
       pinned,
+      listPinned = false,
       postData,
       preferredRemoteType,
       referrerInfo,
@@ -3914,6 +4081,14 @@ export class Tabbrowser {
       (relatedToCurrent && this.selectedTab) ||
       null;
 
+    if (this.#isListPinnedLink(openerTab, pinned)) {
+      tabIndex = this.pinnedTabCount;
+      elementIndex = undefined;
+      tabGroup = null;
+      inBackground = true;
+      ownerTab = null;
+    }
+
     // When overflowing, new tabs are scrolled into view smoothly, which
     // doesn't go well together with the width transition. So we skip the
     // transition in that case.
@@ -3943,6 +4118,9 @@ export class Tabbrowser {
         noInitialLabel,
         skipBackgroundNotify,
       });
+      if (listPinned) {
+        t.setAttribute("listpinned", "");
+      }
       if (insertTab) {
         // Insert the tab into the tab container in the correct position.
         this.#insertTabAtIndex(t, {
@@ -4329,6 +4507,18 @@ export class Tabbrowser {
       metricsContext = this.TabMetrics.UNKNOWN_CONTEXT,
     } = {}
   ) {
+    if (
+      tabsAndSplitViews?.some(
+        element => Tabbrowser.isTab(element) && element.listPinned
+      )
+    ) {
+      tabsAndSplitViews = tabsAndSplitViews.filter(
+        element => !Tabbrowser.isTab(element) || !element.listPinned
+      );
+      if (!tabsAndSplitViews.length) {
+        return null;
+      }
+    }
     if (
       !tabsAndSplitViews?.length ||
       tabsAndSplitViews.some(
@@ -5213,6 +5403,9 @@ export class Tabbrowser {
 
       if (tabData.pinned) {
         this.pinTab(tab);
+        if (tabData.extData?.listPinned == "true") {
+          this.#setListPinned(tab, true);
+        }
         // Then ensure all the tab open/pinning information is sent.
         this.#fireTabOpen(tab, {});
       } else if (tabGroup) {
@@ -5532,13 +5725,17 @@ export class Tabbrowser {
       let insertRelatedAfterCurrent = Services.prefs.getBoolPref(
         "browser.tabs.insertRelatedAfterCurrent"
       );
+      const immediatelyAfterOpener =
+        this.tabContainer.verticalMode && openerTab && !openerTab.pinned;
       if (
         !bulkOrderedOpen &&
-        ((openerTab && insertRelatedAfterCurrent) ||
+        ((openerTab && (insertRelatedAfterCurrent || immediatelyAfterOpener)) ||
           Services.prefs.getBoolPref("browser.tabs.insertAfterCurrent"))
       ) {
         let lastRelatedTab =
-          openerTab && this.#lastRelatedTabMap.get(openerTab);
+          !immediatelyAfterOpener &&
+          openerTab &&
+          this.#lastRelatedTabMap.get(openerTab);
         let previousTab =
           (insertRelatedAfterCurrent && lastRelatedTab) ||
           openerTab ||
@@ -5586,19 +5783,33 @@ export class Tabbrowser {
 
     let allItems;
     let index;
+    // Element indices only count visible items, while pinnedTabCount also
+    // counts pinned tabs hidden in other container workspaces.
+    let pinnedCount;
     if (typeof elementIndex == "number") {
       allItems = this.tabContainer.dragAndDropElements;
       index = elementIndex;
+      pinnedCount = this.tabContainer.visiblePinnedTabCount;
     } else {
       allItems = this.tabs;
       index = tabIndex;
+      pinnedCount = this.pinnedTabCount;
     }
     // Ensure index is within bounds.
     if (tab.pinned) {
       index = Math.max(index, 0);
-      index = Math.min(index, this.pinnedTabCount);
+      const boundary =
+        typeof elementIndex == "number"
+          ? this.tabContainer.dragAndDropElements.filter(
+              item => Tabbrowser.isTab(item) && item.pinned && !item.listPinned
+            ).length
+          : this.iconPinnedTabCount;
+      index = tab.listPinned
+        ? Math.max(index, boundary)
+        : Math.min(index, boundary);
+      index = Math.min(index, pinnedCount);
     } else {
-      index = Math.max(index, this.pinnedTabCount);
+      index = Math.max(index, pinnedCount);
       index = Math.min(index, allItems.length);
     }
     let itemAfter =
@@ -8151,7 +8362,12 @@ export class Tabbrowser {
 
     // Don't allow mixing pinned and unpinned tabs.
     if (Tabbrowser.isTab(element) && element.pinned) {
-      tabIndex = Math.min(tabIndex, this.pinnedTabCount - 1);
+      tabIndex = element.listPinned
+        ? Math.max(
+            this.iconPinnedTabCount,
+            Math.min(tabIndex, this.pinnedTabCount - 1)
+          )
+        : Math.max(0, Math.min(tabIndex, this.iconPinnedTabCount - 1));
     } else {
       tabIndex = Math.max(tabIndex, this.pinnedTabCount);
     }
@@ -8302,6 +8518,20 @@ export class Tabbrowser {
     if (element.pinned && !targetElement?.pinned) {
       targetElement = this.tabs[this.pinnedTabCount - 1];
       moveBefore = false;
+    } else if (
+      Tabbrowser.isTab(element) &&
+      element.pinned &&
+      Tabbrowser.isTab(targetElement) &&
+      targetElement.pinned &&
+      element.listPinned != targetElement.listPinned
+    ) {
+      targetElement =
+        this.tabs[
+          element.listPinned
+            ? this.iconPinnedTabCount
+            : this.iconPinnedTabCount - 1
+        ];
+      moveBefore = element.listPinned;
     } else if (!element.pinned && targetElement && targetElement.pinned) {
       // If the caller asks to move an unpinned element next to a pinned
       // tab, move the unpinned element to be the first unpinned element
@@ -8673,6 +8903,7 @@ export class Tabbrowser {
    *    The new tab in the current window, null if the tab couldn't be adopted.
    */
   adoptTab(aTab, { elementIndex, tabIndex, selectTab = false } = {}) {
+    const wasListPinned = aTab.listPinned;
     // Swap the dropped tab with a new one we create and then close
     // it in the other window (making it seem to have moved between
     // windows). We also ensure that the tab we create to swap into has
@@ -8707,6 +8938,7 @@ export class Tabbrowser {
     let numPinned = this.pinnedTabCount;
     if (index < numPinned || (aTab.pinned && index == numPinned)) {
       params.pinned = true;
+      params.listPinned = aTab.listPinned;
     }
 
     if (aTab.hasAttribute("usercontextid")) {
@@ -8722,6 +8954,11 @@ export class Tabbrowser {
       // Swapping wasn't permitted. Bail out.
       this.removeTab(newTab);
       return null;
+    }
+    if (params.listPinned) {
+      this.#setListPinned(newTab, true);
+    } else if (wasListPinned) {
+      this.#setListPinned(newTab, false);
     }
 
     if (selectTab) {
@@ -9888,6 +10125,7 @@ export class Tabbrowser {
 
   destroy() {
     this.containerWorkspaces.destroy();
+    this.tabContainer.removeEventListener("SSTabRestoring", this);
     this.tabContainer.destroy();
     Services.obs.removeObserver(this, "contextual-identity-updated");
     Services.obs.removeObserver(this, "intl:app-locales-changed");

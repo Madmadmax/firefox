@@ -23,6 +23,19 @@ ChromeUtils.defineLazyGetter(lazy, "ReferrerInfo", () =>
   )
 );
 
+function isListPinnedLink(win, params) {
+  if (!win.gBrowser.tabContainer.verticalMode) {
+    return false;
+  }
+  let opener;
+  if (params.openerBrowser) {
+    opener = win.gBrowser.getTabForBrowser(params.openerBrowser);
+  } else if (params.relatedToCurrent || params.referrerInfo?.originalReferrer) {
+    opener = win.gBrowser.selectedTab;
+  }
+  return !!opener?.listPinned;
+}
+
 function saveLink(window, url, params) {
   if ("isContentWindowPrivate" in params) {
     window.saveURL(
@@ -585,6 +598,7 @@ export const URILoadingHelper = {
       } else if (
         !allowPinnedTabHostChange &&
         tab.pinned &&
+        !(tab.listPinned && w.gBrowser.tabContainer.verticalMode) &&
         url != "about:crashcontent"
       ) {
         try {
@@ -618,6 +632,9 @@ export const URILoadingHelper = {
         break;
       case "tab":
       case "tabshifted": {
+        if (isListPinnedLink(w, params)) {
+          loadInBackground = true;
+        }
         focusUrlBar =
           !loadInBackground &&
           w.isBlankPageURL(url) &&
@@ -628,6 +645,7 @@ export const URILoadingHelper = {
           charset,
           postData,
           inBackground: loadInBackground,
+          tabIndex: params.tabIndex,
           allowThirdPartyFixup,
           relatedToCurrent: params.relatedToCurrent,
           skipAnimation: skipTabAnimation,

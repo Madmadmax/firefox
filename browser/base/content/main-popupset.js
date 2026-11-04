@@ -92,11 +92,17 @@ document.addEventListener(
           );
           break;
         case "context_pinTab":
-          gBrowser.pinTab(TabContextMenu.contextTab, {
+          gBrowser.pinTabAsIcon(TabContextMenu.contextTab, {
             metricsContext: lazy.TabMetrics.userTriggeredContext(
               lazy.TabMetrics.METRIC_SOURCE.TAB_MENU
             ),
           });
+          break;
+        case "context_pinTabToList":
+          gBrowser.pinTabToList(TabContextMenu.contextTab);
+          break;
+        case "context_unpinTabFromList":
+          gBrowser.unpinTabFromList(TabContextMenu.contextTab);
           break;
         case "context_unpinTab":
           gBrowser.unpinTab(TabContextMenu.contextTab, {

@@ -761,8 +761,8 @@ add_task(async function test_drag_with_inactive_pinned_tabs() {
       win.getComputedStyle(
         win.document.getElementById("vertical-pinned-tabs-splitter")
       ).display,
-      "none",
-      "No splitter for hidden pinned tabs"
+      "block",
+      "The persistent list-pin boundary stays visible with hidden pinned tabs"
     );
     await dragAndDrop(tabs[0], tabs[2], false, win, true, win);
     Assert.deepEqual(

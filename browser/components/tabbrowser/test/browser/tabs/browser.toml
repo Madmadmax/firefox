@@ -185,6 +185,8 @@ tags = "vertical-tabs"
 
 ["browser_list_all_tabs_telemetry.js"]
 
+["browser_list_pinned_tabs.js"]
+
 ["browser_long_data_url_label_truncation.js"]
 tags = "vertical-tabs"
 

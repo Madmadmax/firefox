@@ -63,6 +63,8 @@ var TabContextMenu = {
             [
               "#context_pinTab",
               "#context_unpinTab",
+              "#context_pinTabToList",
+              "#context_unpinTabFromList",
               "#context_pinSelectedTabs",
               "#context_unpinSelectedTabs",
             ],
@@ -202,6 +204,8 @@ var TabContextMenu = {
             [
               "#context_pinTab",
               "#context_unpinTab",
+              "#context_pinTabToList",
+              "#context_unpinTabFromList",
               "#context_pinSelectedTabs",
               "#context_unpinSelectedTabs",
             ],
@@ -778,6 +782,18 @@ var TabContextMenu = {
 
     this._updateMoveTabToFlattenedVisibility();
 
+    if (this.contextTabs.some(tab => tab.listPinned)) {
+      contextAddTabToGroup.hidden = true;
+      contextMoveTabToNewGroup.hidden = true;
+      contextMoveTabToGroup.hidden = true;
+      contextMoveSplitViewToNewGroup.hidden = true;
+      document
+        .querySelectorAll("#tabContextMenu [tab-group-id]")
+        .forEach(item => {
+          item.hidden = true;
+        });
+    }
+
     let contextAddNote = document.getElementById("context_addNote");
     let contextEditNote = document.getElementById("context_editNote");
     if (this._tabNotesEnabled) {
@@ -887,6 +903,19 @@ var TabContextMenu = {
       this.contextTab.pinned || this.multiselected || hasAboutOpenTabsTab;
     let contextUnpinTab = document.getElementById("context_unpinTab");
     contextUnpinTab.hidden = !this.contextTab.pinned || this.multiselected;
+    const listPinEnabled =
+      gBrowser.tabContainer.verticalMode &&
+      !this.multiselected &&
+      !this.contextTab.splitview &&
+      !hasAboutOpenTabsTab;
+    document.getElementById("context_pinTabToList").hidden =
+      !listPinEnabled || this.contextTab.listPinned;
+    document.getElementById("context_unpinTabFromList").hidden =
+      !listPinEnabled || !this.contextTab.listPinned;
+    if (gBrowser.tabContainer.verticalMode && this.contextTab.listPinned) {
+      contextPinTab.hidden = this.multiselected;
+      contextUnpinTab.hidden = true;
+    }
     let contextPinSelectedTabs = document.getElementById(
       "context_pinSelectedTabs"
     );

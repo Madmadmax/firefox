@@ -33,6 +33,12 @@ tabbrowser-close-tabs-button =
            *[other] Close { $tabCount } tabs
         }
 
+# Tooltip and accessible name for the "-" button that replaces the "X"
+# button on the active tab pinned to the list. It unloads the tab from memory
+# and keeps it in the list.
+tab-unload-list-pinned =
+    .tooltiptext = Unload tab
+
 ## Tooltips for tab audio control
 ## Variables:
 ##   $tabCount (Number): The number of tabs that will be affected.

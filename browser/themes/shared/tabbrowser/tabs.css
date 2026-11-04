@@ -1016,7 +1016,7 @@ tab-split-view-wrapper[dragtarget] {
     font-size: calc(1em + var(--vertical-tab-label-font-size-delta, 0px));
   }
 
-  &[expanded] .tabbrowser-tab:not([pinned], tab-split-view-wrapper > .tabbrowser-tab) {
+  &[expanded] .tabbrowser-tab:not([pinned]:not([listpinned]), tab-split-view-wrapper > .tabbrowser-tab) {
     .tab-background {
       min-height: calc(var(--tab-min-height) + 2 * var(--vertical-tab-padding-block-delta, 0px));
     }
@@ -1162,6 +1162,43 @@ tab-split-view-wrapper[dragtarget] {
   &[pinned],
   #tabbrowser-tabs[closebuttons="activetab"][orient="horizontal"] &:not([selected]) {
     display: none;
+  }
+}
+
+.tabbrowser-tab[listpinned][visuallyselected] .tab-close-button {
+  list-style-image: url(chrome://global/skin/icons/minus.svg);
+}
+
+/* List-pinned tabs keep pinned="true" on their descendants, so undo the
+ * pinned icon layout where they are shown as rows. */
+#tabbrowser-tabs[orient="vertical"][expanded] .tabbrowser-tab[listpinned] {
+  .tab-content {
+    min-width: 0;
+    padding: 0 var(--tab-padding-inline);
+
+    &[titlechanged]:not([selected]) {
+      background-position-x: calc(var(--tab-padding-inline) + var(--icon-size) + 1px);
+
+      &:-moz-locale-dir(rtl) {
+        background-position-x: right calc(var(--tab-padding-inline) + var(--icon-size) + 1px);
+      }
+    }
+  }
+
+  :is(.tab-throbber, .tab-icon-pending, .tab-icon-image, .tab-sharing-icon-overlay, .tab-icon-overlay) {
+    margin-inline-end: var(--tab-icon-margin-inline-end);
+  }
+
+  .tab-label-container {
+    width: auto;
+  }
+
+  .tab-close-button {
+    display: revert;
+  }
+
+  .tab-loading-burst::before {
+    margin-inline-start: calc(17px - 2.5%);
   }
 }
 
@@ -3019,7 +3056,7 @@ tab-group {
     -moz-line-scroll-amount: var(--tab-height-with-margin-padding);
   }
 
-  .tabbrowser-tab:not(:hover) > .tab-stack > .tab-background:not([selected], [multiselected]) {
+  .tabbrowser-tab:not(:hover, [listpinned]) > .tab-stack > .tab-background:not([selected], [multiselected]) {
     background-color: color-mix(in srgb, currentColor 7%, transparent);
   }
 
@@ -3037,15 +3074,15 @@ tab-group {
       &::part(items-wrapper) {
         grid-template-columns: repeat(auto-fit, minmax(var(--tab-pinned-min-width), auto));
         display: grid;
-        grid-auto-rows: var(--tab-height-with-margin-padding);
+        grid-auto-rows: minmax(var(--tab-height-with-margin-padding), auto);
       }
 
-      .tab-label-container {
+      .tabbrowser-tab:not([listpinned]) .tab-label-container {
         display: none;
       }
     }
 
-    .tab-content {
+    .tabbrowser-tab:not([listpinned]) .tab-content {
       justify-content: center;
     }
 
@@ -3056,8 +3093,16 @@ tab-group {
     #tabbrowser-tabs[expanded] > & {
       --tab-pinned-min-width: var(--tab-pinned-min-width-expanded);
 
-      .tab-background {
+      .tabbrowser-tab:not([listpinned]) .tab-background {
         margin-inline: var(--tab-margin-inline-pinned-expanded);
+      }
+
+      /* List-pinned tabs take a full row and line up with unpinned tabs, so
+       * they cancel the container padding and the pinned tab inline padding. */
+      .tabbrowser-tab[listpinned] {
+        --tab-padding-inline: calc((var(--tab-collapsed-width) - var(--icon-size)) / 2);
+        grid-column: 1 / -1;
+        margin-inline: calc(-1 * var(--tab-container-margin-inline-pinned-expanded));
       }
 
       &::part(items-wrapper) {
@@ -3094,10 +3139,6 @@ tab-group {
 
 :root[container-workspaces] #pinned-tabs-container[workspace-empty] {
   display: none;
-
-  & + #vertical-pinned-tabs-splitter {
-    display: none;
-  }
 }
 
 #vertical-pinned-tabs-splitter {
@@ -3114,10 +3155,8 @@ tab-group {
     min-height: 4px;
   }
 
-  #pinned-tabs-container:empty + & {
-    display: none;
-  }
-
+  /* The line stays visible without pinned tabs, as it is the drop target for
+   * pinning tabs to the list. */
   @media not -moz-pref("sidebar.verticalTabs") {
     display: none;
   }
@@ -3131,11 +3170,8 @@ tab-group {
   #tabbrowser-tabs[expanded] > & {
     background-image: none;
 
-    /* Expand on hover keeps the full width line, with the hover state on top. */
-    @media -moz-pref("sidebar.visibility", "expand-on-hover") {
-      &:not(:hover) {
-        border-top: var(--tabstrip-inner-border);
-      }
+    &:not(:hover) {
+      border-top: var(--tabstrip-inner-border);
     }
   }
 }
@@ -3437,7 +3473,7 @@ toolbar:not(#TabsToolbar) #firefox-view-button {
 
 #tabbrowser-tabs[hasadjacentnewtabbutton]:not([overflow]) ~ #new-tab-button,
 #tabbrowser-tabs[orient="horizontal"] > #vertical-tabs-newtab-button,
-#tabbrowser-tabs[orient="vertical"]:not([overflow]) > #vertical-tabs-newtab-button,
+#tabbrowser-arrowscrollbox[orient="vertical"] > #tabbrowser-arrowscrollbox-periphery > #tabs-newtab-button,
 #tabbrowser-arrowscrollbox[overflowing] > #tabbrowser-arrowscrollbox-periphery > #tabs-newtab-button,
 #tabbrowser-tabs:not([hasadjacentnewtabbutton])[orient="horizontal"] > #tabbrowser-arrowscrollbox > #tabbrowser-arrowscrollbox-periphery > #tabs-newtab-button,
 #TabsToolbar[customizing] #tabs-newtab-button {

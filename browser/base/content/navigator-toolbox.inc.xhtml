@@ -57,6 +57,11 @@
           <arrowscrollbox id="pinned-tabs-container" orient="horizontal" clicktoscroll=""></arrowscrollbox>
           <splitter orient="vertical" id="vertical-pinned-tabs-splitter" resizebefore="sibling" resizeafter="none" hidden="true"/>
           <hbox class="tab-drop-indicator" hidden="true"/>
+          <toolbarbutton id="vertical-tabs-newtab-button"
+                              class="toolbarbutton-1"
+                              command="cmd_newNavigatorTab"
+                              tooltip="dynamic-shortcut-tooltip"
+                              data-l10n-id="tabs-toolbar-new-tab"/>
           <arrowscrollbox id="tabbrowser-arrowscrollbox" orient="horizontal" flex="1" clicktoscroll="" scrolledtostart="" scrolledtoend="">
             <tab is="tabbrowser-tab" class="tabbrowser-tab" selected="" visuallyselected="" fadein=""/>
             <hbox id="tabbrowser-arrowscrollbox-periphery">
@@ -69,11 +74,6 @@
               <spacer class="closing-tabs-spacer" style="width: 0;"/>
             </hbox>
           </arrowscrollbox>
-          <toolbarbutton id="vertical-tabs-newtab-button"
-                              class="toolbarbutton-1"
-                              command="cmd_newNavigatorTab"
-                              tooltip="dynamic-shortcut-tooltip"
-                              data-l10n-id="tabs-toolbar-new-tab"/>
           <html:span id="tabbrowser-tab-a11y-desc" hidden="true"/>
         </tabs>
 

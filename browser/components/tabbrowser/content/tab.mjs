@@ -259,6 +259,9 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     // the rest of the system knows that the tab is selected, but we don't want to update its
     // visual status to selected until after we receive confirmation that its content has painted.
     this.toggleAttribute("selected", val);
+    if (this.hasAttribute("listpinned")) {
+      this.updateListPinnedCloseButton();
+    }
 
     // If we're non-e10s we need to update the visual selection at the same
     // time, otherwise AsyncTabSwitcher will take care of this.
@@ -269,6 +272,20 @@ export class MozTabbrowserTab extends MozElements.MozTab {
 
   get pinned() {
     return this.hasAttribute("pinned");
+  }
+
+  get listPinned() {
+    return this.pinned && this.hasAttribute("listpinned");
+  }
+
+  updateListPinnedCloseButton() {
+    const unload =
+      this.listPinned && this.selected && gBrowser.tabContainer.verticalMode;
+    document.l10n.setAttributes(
+      this.closeButton,
+      unload ? "tab-unload-list-pinned" : "tabbrowser-close-tabs-button",
+      unload ? undefined : { tabCount: 1 }
+    );
   }
 
   get isOpen() {
@@ -742,7 +759,13 @@ export class MozTabbrowserTab extends MozElements.MozTab {
     }
 
     if (event.target.classList.contains("tab-close-button")) {
-      if (this.multiselected) {
+      if (
+        this.selected &&
+        this.listPinned &&
+        gBrowser.tabContainer.verticalMode
+      ) {
+        gBrowser.unloadListPinnedTab(this);
+      } else if (this.multiselected) {
         gBrowser.removeMultiSelectedTabs({
           metricsContext: lazy.TabMetrics.userTriggeredContext(
             lazy.TabMetrics.METRIC_SOURCE.TAB_STRIP
