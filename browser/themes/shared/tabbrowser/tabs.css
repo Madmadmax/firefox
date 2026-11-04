@@ -3206,6 +3206,13 @@ tab-group {
   align-content: flex-start;
   grid-gap: var(--space-small);
 
+  /* #vertical-tabs-newtab-button follows the unpinned tabs in the markup, as
+   * tab strip code expects, but is shown above them. */
+  > #tabbrowser-arrowscrollbox,
+  &::after {
+    order: 1;
+  }
+
   &::after {
     content: "";
     border-bottom: var(--tabstrip-inner-border);
