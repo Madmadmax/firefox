@@ -360,6 +360,22 @@ add_task(async function test_links_and_new_tabs_open_above_normal_tabs() {
       "A real target=_blank click stays in the background"
     );
     Assert.equal(blankLink.index, browser.pinnedTabCount);
+
+    browser.addTabGroup([source]);
+    const groupedCreated = BrowserTestUtils.waitForNewTab(
+      browser,
+      LIST_URL + "?grouped"
+    );
+    win.openTrustedLinkIn(LIST_URL + "?grouped", "tab", {
+      relatedToCurrent: true,
+    });
+    const groupedLink = await groupedCreated;
+    Assert.ok(
+      !groupedLink.pinned && !groupedLink.group,
+      "A link from a list group opens outside of the group"
+    );
+    Assert.equal(groupedLink.index, browser.pinnedTabCount);
+
     const newTab = BrowserTestUtils.waitForNewTab(browser);
     win.BrowserCommands.openTab();
     const fresh = await newTab;
@@ -427,6 +443,32 @@ add_task(async function test_normal_links_open_immediately_after_source() {
     }
   });
   await SpecialPowers.popPrefEnv();
+});
+
+add_task(async function test_links_from_groups_open_first_among_normal_tabs() {
+  await withListWindow(async (win, browser) => {
+    browser.addTrustedTab("about:blank");
+    const source = await BrowserTestUtils.openNewForegroundTab(
+      browser,
+      LIST_URL + "?grouped-source"
+    );
+    browser.addTabGroup([source, browser.addTrustedTab("about:blank")]);
+    browser.selectedTab = source;
+    const created = BrowserTestUtils.waitForNewTab(
+      browser,
+      LIST_URL + "?from-group"
+    );
+    win.openTrustedLinkIn(LIST_URL + "?from-group", "tab", {
+      relatedToCurrent: true,
+    });
+    const link = await created;
+    Assert.ok(!link.group, "A link from a tab group opens outside of it");
+    Assert.equal(
+      link.index,
+      browser.pinnedTabCount,
+      "It opens first among the normal tabs"
+    );
+  });
 });
 
 add_task(async function test_drag_between_list_and_normal_sections() {

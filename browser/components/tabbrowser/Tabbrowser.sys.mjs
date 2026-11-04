@@ -1548,13 +1548,29 @@ export class Tabbrowser {
 
   #unloadingListTabs = new WeakSet();
 
-  #isListPinnedLink(openerTab, pinned) {
-    return (
-      this.tabContainer.verticalMode &&
-      openerTab?.listPinned &&
-      openerTab.container == this.tabContainer &&
-      !pinned
-    );
+  /**
+   * Tabs opened from a list pin or from a tab in a group start the unpinned
+   * tabs instead of following their opener.
+   *
+   * @param {MozTabbrowserTab} [openerTab]
+   * @param {boolean} [pinned]
+   *   Whether the new tab is pinned.
+   * @returns {object|null}
+   *   Options that override those of the new tab, or null to place it as
+   *   usual.
+   */
+  #getOpenerPlacement(openerTab, pinned) {
+    if (
+      pinned ||
+      !this.tabContainer.verticalMode ||
+      openerTab?.container != this.tabContainer
+    ) {
+      return null;
+    }
+    if (openerTab.listPinned) {
+      return { inBackground: true, ownerTab: null };
+    }
+    return openerTab.group && !openerTab.pinned ? {} : null;
   }
 
   async unloadListPinnedTab(tab) {
@@ -4098,12 +4114,18 @@ export class Tabbrowser {
       (relatedToCurrent && this.selectedTab) ||
       null;
 
-    if (this.#isListPinnedLink(openerTab, pinned)) {
+    let openerPlacement = this.#getOpenerPlacement(openerTab, pinned);
+    if (openerPlacement) {
+      ({ inBackground, ownerTab } = {
+        inBackground,
+        ownerTab,
+        ...openerPlacement,
+      });
       tabIndex = this.pinnedTabCount;
       elementIndex = undefined;
       tabGroup = null;
-      inBackground = true;
-      ownerTab = null;
+    } else {
+      tabGroup ??= openerTab?.group;
     }
 
     // When overflowing, new tabs are scrolled into view smoothly, which
@@ -4147,7 +4169,7 @@ export class Tabbrowser {
           openerTab,
           pinned,
           bulkOrderedOpen,
-          tabGroup: tabGroup ?? openerTab?.group,
+          tabGroup,
         });
       }
 
