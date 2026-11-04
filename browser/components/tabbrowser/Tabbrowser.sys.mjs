@@ -1420,7 +1420,7 @@ export class Tabbrowser {
       // If periphery is null, append to end
       this.pinnedTabsContainer.insertBefore(
         aTab,
-        this.tabs.find(tab => tab.listPinned) || periphery
+        this.#firstListPinnedNode() || periphery
       );
     });
 
@@ -1483,7 +1483,7 @@ export class Tabbrowser {
       () =>
         this.pinnedTabsContainer.insertBefore(
           tab,
-          this.tabs.find(candidate => candidate.listPinned) ||
+          this.#firstListPinnedNode() ||
             this.document.getElementById("pinned-tabs-container-periphery")
         ),
       options
@@ -1505,8 +1505,25 @@ export class Tabbrowser {
       this.pinTab(tab);
     }
     this.#setListPinned(tab, true);
-    this.moveTabTo(tab, { tabIndex: this.pinnedTabCount - 1 });
+    if (tab.group) {
+      return true;
+    }
+    this.#handleTabMove(tab, () =>
+      this.pinnedTabsContainer.insertBefore(
+        tab,
+        this.document.getElementById("pinned-tabs-container-periphery")
+      )
+    );
     return true;
+  }
+
+  /**
+   * @returns {MozTabbrowserTab|MozTabbrowserTabGroup|undefined}
+   *   The first list-pinned tab, or the list-pinned group holding it.
+   */
+  #firstListPinnedNode() {
+    let tab = this.tabs.find(candidate => candidate.listPinned);
+    return tab?.group ?? tab;
   }
 
   unpinTabFromList(tab) {
@@ -4507,17 +4524,18 @@ export class Tabbrowser {
       metricsContext = this.TabMetrics.UNKNOWN_CONTEXT,
     } = {}
   ) {
-    if (
-      tabsAndSplitViews?.some(
-        element => Tabbrowser.isTab(element) && element.listPinned
-      )
-    ) {
-      tabsAndSplitViews = tabsAndSplitViews.filter(
-        element => !Tabbrowser.isTab(element) || !element.listPinned
+    // A group made from a list-pinned tab stays in the list, and the other
+    // tabs join it there.
+    let first = tabsAndSplitViews?.[0];
+    let listPinned =
+      this.tabContainer.verticalMode &&
+      Tabbrowser.isTab(first) &&
+      first.listPinned;
+    if (listPinned) {
+      tabsAndSplitViews = tabsAndSplitViews.filter(element =>
+        Tabbrowser.isTab(element)
       );
-      if (!tabsAndSplitViews.length) {
-        return null;
-      }
+      insertBefore = first.group ?? first;
     }
     if (
       !tabsAndSplitViews?.length ||
@@ -4542,6 +4560,7 @@ export class Tabbrowser {
       id = `${Date.now()}-${Math.round(Math.random() * 100)}`;
     }
     let group = this.#createTabGroup(id, color, false, label, adopting);
+    group.toggleAttribute("listpinned", listPinned);
     this.tabContainer.insertBefore(group, insertBefore?.group ?? insertBefore);
     group.addTabs(tabsAndSplitViews, metricsContext);
 
@@ -4650,8 +4669,11 @@ export class Tabbrowser {
       return;
     }
 
+    let group = tab.group;
     this.#handleTabMove(tab, () =>
-      this.tabContainer.insertBefore(tab, tab.group.nextElementSibling)
+      group.listPinned
+        ? group.after(tab)
+        : this.tabContainer.insertBefore(tab, group.nextElementSibling)
     );
   }
 
@@ -5404,7 +5426,22 @@ export class Tabbrowser {
       if (tabData.pinned) {
         this.pinTab(tab);
         if (tabData.extData?.listPinned == "true") {
-          this.#setListPinned(tab, true);
+          // pinTab put the tab before the list, so move it after the list
+          // tabs restored so far.
+          this.pinTabToList(tab);
+          if (tabGroup) {
+            if (!tabGroup.node) {
+              tabGroup.node = this.#createTabGroup(
+                tabGroup.stateData.id,
+                tabGroup.stateData.color,
+                tabGroup.stateData.collapsed,
+                tabGroup.stateData.name
+              );
+              tabGroup.node.toggleAttribute("listpinned", true);
+              tab.before(tabGroup.node);
+            }
+            tabGroup.node.appendChild(tab);
+          }
         }
         // Then ensure all the tab open/pinning information is sent.
         this.#fireTabOpen(tab, {});
@@ -8659,7 +8696,7 @@ export class Tabbrowser {
     if (!Tabbrowser.isTab(aTab)) {
       throw new Error("Can only move a tab into a tab group");
     }
-    if (aTab.pinned) {
+    if (aGroup.listPinned ? !aTab.listPinned : aTab.pinned) {
       return;
     }
     if (aTab.group && aTab.group.id === aGroup.id) {

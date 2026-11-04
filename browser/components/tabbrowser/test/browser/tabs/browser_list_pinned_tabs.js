@@ -68,10 +68,12 @@ add_task(async function test_order_and_conversion() {
     Assert.ok(!first.pinned);
     Assert.equal(SessionStore.getCustomTabValue(first, "listPinned"), "");
     browser.pinTabToList(first);
-    Assert.equal(
-      browser.addTabGroup([first]),
-      null,
-      "List pins cannot enter a group"
+    const group = browser.addTabGroup([first]);
+    Assert.ok(group.listPinned, "A group of list pins is a list group");
+    browser.ungroupTab(first);
+    Assert.ok(
+      first.listPinned && !first.group,
+      "Ungrouping keeps list pinning"
     );
     const other = browser.addTrustedTab("about:blank");
     browser.addTabSplitView([first, other]);
@@ -106,27 +108,13 @@ add_task(async function test_group_context_menu() {
           win
         );
         await shown;
-        if (tab.listPinned) {
-          for (const id of [
-            "context_addTabToGroup",
-            "context_moveTabToNewGroup",
-            "context_moveTabToGroup",
-            "context_moveSplitViewToNewGroup",
-          ]) {
-            Assert.ok(
-              win.document.getElementById(id).hidden,
-              `${id} is hidden`
-            );
-          }
-        } else {
-          const id = alternate
-            ? "context_addTabToGroup"
-            : "context_moveTabToGroup";
-          Assert.ok(
-            !win.document.getElementById(id).hidden,
-            "Group actions return for an ordinary tab"
-          );
-        }
+        const id = alternate
+          ? "context_addTabToGroup"
+          : "context_moveTabToGroup";
+        Assert.ok(
+          !win.document.getElementById(id).hidden,
+          `Group actions are shown for tab ${tab.listPinned}`
+        );
         const hidden = BrowserTestUtils.waitForPopupEvent(menu, "hidden");
         menu.hidePopup();
         await hidden;
@@ -134,6 +122,78 @@ add_task(async function test_group_context_menu() {
     });
     await SpecialPowers.popPrefEnv();
   }
+});
+
+add_task(async function test_list_pinned_groups() {
+  await withListWindow(async (win, browser) => {
+    const icon = browser.addTrustedTab("about:blank");
+    browser.pinTab(icon);
+    const first = await listPage(browser, "?group-1");
+    const second = await listPage(browser, "?group-2");
+    const group = browser.addTabGroup([first, second], { label: "List" });
+    Assert.ok(group.listPinned, "The group stays among list pins");
+    Assert.equal(group.parentNode, browser.tabContainer.pinnedTabsContainer);
+    Assert.ok(browser.tabGroups.includes(group), "The group is listed");
+    Assert.deepEqual(browser.tabs.slice(0, 3), [icon, first, second]);
+    Assert.ok(first.pinned && first.listPinned && first.group == group);
+    Assert.equal(
+      browser.tabContainer.visiblePinnedTabCount,
+      4,
+      "The group label counts among pinned elements"
+    );
+
+    const normal = browser.addTrustedTab("about:blank");
+    group.addTabs([normal]);
+    Assert.ok(
+      normal.listPinned && normal.group == group,
+      "An ordinary tab added to a list group becomes a list pin"
+    );
+
+    const lateIcon = browser.addTrustedTab("about:blank");
+    browser.pinTab(lateIcon);
+    Assert.deepEqual(
+      browser.tabs.slice(0, 2),
+      [icon, lateIcon],
+      "Icon pins go before the list group"
+    );
+
+    browser.unpinTabFromList(normal);
+    Assert.ok(
+      !normal.pinned && !normal.group,
+      "Unpinning from the list leaves the group"
+    );
+
+    const ordinaryGroup = browser.addTabGroup([
+      browser.addTrustedTab("about:blank"),
+    ]);
+    ordinaryGroup.addTabs([second]);
+    Assert.ok(
+      !second.pinned && second.group == ordinaryGroup,
+      "A list pin added to an ordinary group becomes an ordinary tab"
+    );
+
+    group.collapsed = true;
+    const state = SessionStore.getWindowState(win);
+    await withListWindow(async (restored, target) => {
+      const ready = BrowserTestUtils.waitForEvent(
+        restored,
+        "SSWindowStateReady"
+      );
+      SessionStore.setWindowState(restored, state, true);
+      await ready;
+      const restoredGroup = target.tabGroups.find(g => g.label == "List");
+      Assert.ok(restoredGroup?.listPinned, "The list group restores");
+      Assert.equal(
+        restoredGroup.parentNode,
+        target.tabContainer.pinnedTabsContainer
+      );
+      Assert.ok(restoredGroup.collapsed, "Its collapsed state restores");
+      Assert.ok(
+        restoredGroup.tabs.length == 1 && restoredGroup.tabs[0].listPinned,
+        "Its list pins restore inside it"
+      );
+    });
+  });
 });
 
 add_task(async function test_restore_duplicate_and_adopt() {

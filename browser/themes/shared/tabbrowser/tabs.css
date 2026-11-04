@@ -3099,7 +3099,8 @@ tab-group {
 
       /* List-pinned tabs take a full row and line up with unpinned tabs, so
        * they cancel the container padding and the pinned tab inline padding. */
-      .tabbrowser-tab[listpinned] {
+      .tabbrowser-tab[listpinned],
+      tab-group[listpinned] > :not(.tabbrowser-tab) {
         --tab-padding-inline: calc((var(--tab-collapsed-width) - var(--icon-size)) / 2);
         grid-column: 1 / -1;
         margin-inline: calc(-1 * var(--tab-container-margin-inline-pinned-expanded));

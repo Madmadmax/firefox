@@ -938,10 +938,12 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
     // explode tab groups and split view wrappers
     // Iterate backwards over the array to preserve indices while we modify
     // things in place
-    for (let i = unpinnedChildren.length - 1; i >= 0; i--) {
-      let child = unpinnedChildren[i];
-      if (isTabGroup(child) || isSplitViewWrapper(child)) {
-        unpinnedChildren.splice(i, 1, ...child.tabs);
+    for (let children of [pinnedChildren, unpinnedChildren]) {
+      for (let i = children.length - 1; i >= 0; i--) {
+        let child = children[i];
+        if (isTabGroup(child) || isSplitViewWrapper(child)) {
+          children.splice(i, 1, ...child.tabs);
+        }
       }
     }
 
@@ -950,7 +952,10 @@ export class MozTabbrowserTabs extends MozElements.TabsBase {
   }
 
   get allGroups() {
-    let children = Array.from(this.arrowScrollbox.children);
+    let children = [
+      ...this.pinnedTabsContainer.children,
+      ...this.arrowScrollbox.children,
+    ];
     return /** @type {MozTabbrowserTabGroup[]} */ (
       children.filter(node => node.tagName == "tab-group")
     );

@@ -384,8 +384,18 @@ export class TabDragAndDrop {
           this._tabbrowserTabs.verticalMode &&
           targetTab?.pinned &&
           !targetTab.listPinned;
+        const listGroup = this._tabbrowserTabs.verticalMode
+          ? event.target.closest?.("tab-group")
+          : null;
+        const shouldDropIntoListGroup =
+          isTab(draggedTab) &&
+          !!listGroup?.listPinned &&
+          listGroup != draggedTab.group;
         const shouldPinToList =
-          isTab(draggedTab) && listTarget && !draggedTab.listPinned;
+          isTab(draggedTab) &&
+          listTarget &&
+          !draggedTab.listPinned &&
+          !shouldDropIntoListGroup;
         const shouldPinToIcon =
           isTab(draggedTab) && draggedTab.listPinned && iconTarget;
       let shouldPin =
@@ -408,9 +418,12 @@ export class TabDragAndDrop {
         !isTabGroupLabel(draggedTab) &&
         !shouldPin &&
           !shouldPinToList &&
+          !shouldDropIntoListGroup &&
         !shouldUnpin;
 
-        if (shouldPin || shouldPinToList || shouldUnpin) {
+        if (shouldDropIntoListGroup) {
+          listGroup.addTabs(movingTabs.filter(isTab), dropMetricsContext);
+        } else if (shouldPin || shouldPinToList || shouldUnpin) {
         for (let item of movingTabs) {
             if (shouldPinToList && isTab(item)) {
               gBrowser.pinTabToList(item);
@@ -456,7 +469,7 @@ export class TabDragAndDrop {
         if (dropElement.group != draggedTab.group) {
           dropElement.group.addTabs(movingTabs, dropMetricsContext);
         }
-      } else {
+        } else if (!shouldDropIntoListGroup) {
         if (dropIndex !== undefined) {
           for (let tab of movingTabs) {
             if (fromTabList && isSplitViewWrapper(tab)) {

@@ -214,7 +214,10 @@ export class MozTabbrowserTabGroup extends MozXULElement {
     // Mirroring MozTabbrowserTab
     this.#labelElement.container = gBrowser.tabContainer;
     this.#labelElement.group = this;
-    this.#labelElement.pinned = false;
+    Object.defineProperties(this.#labelElement, {
+      pinned: { get: () => this.listPinned, configurable: true },
+      listPinned: { get: () => this.listPinned, configurable: true },
+    });
     this.#labelElement.splitview = null;
 
     this.#labelContainerElement.addEventListener("mouseover", this);
@@ -620,6 +623,16 @@ export class MozTabbrowserTabGroup extends MozXULElement {
     });
   }
 
+  /**
+   * Whether the group lives among the list-pinned tabs in the pinned tabs
+   * container. Its tabs are list-pinned.
+   *
+   * @returns {boolean}
+   */
+  get listPinned() {
+    return this.hasAttribute("listpinned");
+  }
+
   #lastAddedTo = 0;
   get lastSeenActive() {
     return Math.max(this.#lastAddedTo, ...this.tabs.map(t => t.lastSeenActive));
@@ -765,10 +778,10 @@ export class MozTabbrowserTabGroup extends MozXULElement {
    * A tab group can be handed to code that also takes tabs and split views,
    * which reads these three off whatever it was given.
    *
-   * @returns {false}
+   * @returns {boolean}
    */
   get pinned() {
-    return false;
+    return this.listPinned;
   }
 
   /**
@@ -901,9 +914,13 @@ export class MozTabbrowserTabGroup extends MozXULElement {
    *   Optional context to record for metrics purposes.
    */
   addTabs(tabsOrSplitViews, metricsContext = null) {
-    tabsOrSplitViews = tabsOrSplitViews.filter(
-      element => !Tabbrowser.isTab(element) || !element.listPinned
-    );
+    if (this.listPinned) {
+      tabsOrSplitViews = tabsOrSplitViews.filter(
+        element =>
+          Tabbrowser.isTab(element) &&
+          element.documentGlobal === this.documentGlobal
+      );
+    }
     if (!tabsOrSplitViews.length) {
       return;
     }
@@ -933,7 +950,11 @@ export class MozTabbrowserTabGroup extends MozXULElement {
           metricsContext,
         });
       } else {
-        if (tabOrSplitView.pinned) {
+        if (this.listPinned) {
+          if (!gBrowser.pinTabToList(tabOrSplitView)) {
+            continue;
+          }
+        } else if (tabOrSplitView.pinned) {
           tabOrSplitView.documentGlobal.gBrowser.unpinTab(tabOrSplitView, {
             metricsContext,
           });

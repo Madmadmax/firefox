@@ -18,6 +18,9 @@ add_setup(async () => {
     set: [
       ["sidebar.animation.enabled", false],
       [VERTICAL_TABS_PREF, false],
+      // New tabs open above the others, so the synthesized pointer can be
+      // left over a tab and open its preview.
+      ["browser.tabs.hoverPreview.enabled", false],
     ],
   });
   Services.telemetry.clearScalars();

@@ -782,18 +782,6 @@ var TabContextMenu = {
 
     this._updateMoveTabToFlattenedVisibility();
 
-    if (this.contextTabs.some(tab => tab.listPinned)) {
-      contextAddTabToGroup.hidden = true;
-      contextMoveTabToNewGroup.hidden = true;
-      contextMoveTabToGroup.hidden = true;
-      contextMoveSplitViewToNewGroup.hidden = true;
-      document
-        .querySelectorAll("#tabContextMenu [tab-group-id]")
-        .forEach(item => {
-          item.hidden = true;
-        });
-    }
-
     let contextAddNote = document.getElementById("context_addNote");
     let contextEditNote = document.getElementById("context_editNote");
     if (this._tabNotesEnabled) {
