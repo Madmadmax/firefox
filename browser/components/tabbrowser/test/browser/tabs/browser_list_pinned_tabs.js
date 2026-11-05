@@ -196,6 +196,27 @@ add_task(async function test_list_pinned_groups() {
   });
 });
 
+add_task(async function test_unloading_retained_tab_collapses_group() {
+  await withListWindow(async (win, browser) => {
+    const first = await listPage(browser, "?retained-1");
+    const second = await listPage(browser, "?retained-2");
+    const group = browser.addTabGroup([first, second]);
+    await BrowserTestUtils.switchTab(browser, first);
+    group.collapsed = true;
+    Assert.ok(first.visible, "The active tab stays visible in the group");
+
+    Assert.ok(await browser.unloadListPinnedTab(first));
+    Assert.ok(!first.selected && !second.selected, "The group lost the focus");
+    Assert.ok(
+      first.isOpen && first.group == group,
+      "The tab stays in the group"
+    );
+    Assert.ok(group.collapsed, "The group stays collapsed");
+    Assert.ok(!group.hasRetainedTab, "No tab is retained");
+    Assert.ok(!first.visible, "The unloaded tab is hidden in the group");
+  });
+});
+
 add_task(async function test_restore_duplicate_and_adopt() {
   await withListWindow(async (win, browser) => {
     const original = await listPage(browser, "?restore");

@@ -31,6 +31,7 @@ const GROUP_WINDOW_EVENTS = [
   "TabClose",
   "TabShow",
   "TabHide",
+  "TabBrowserDiscarded",
   "SSTabRestoring",
   "SSWindowStateReady",
 ];
@@ -1134,6 +1135,16 @@ export class MozTabbrowserTabGroup extends MozXULElement {
       this.#restoreRetainedTabs();
       this.#updateRetainedTabs();
     }
+  }
+
+  on_TabBrowserDiscarded(event) {
+    if (!this.isTabRetained(event.target)) {
+      return;
+    }
+    const retained = this.retainedTab;
+    this.#retainedTabs.delete(retained.userContextId);
+    SessionStore.deleteCustomTabValue(retained, RETAINED_TAB_VALUE);
+    this.#updateRetainedTabs();
   }
 
   on_TabShow(event) {
