@@ -3074,7 +3074,8 @@ tab-group {
       &::part(items-wrapper) {
         grid-template-columns: repeat(auto-fit, minmax(var(--tab-pinned-min-width), auto));
         display: grid;
-        grid-auto-rows: minmax(var(--tab-height-with-margin-padding), auto);
+        grid-auto-rows: auto;
+        align-content: start;
       }
 
       .tabbrowser-tab:not([listpinned]) .tab-label-container {
@@ -3104,6 +3105,10 @@ tab-group {
         --tab-padding-inline: calc((var(--tab-collapsed-width) - var(--icon-size)) / 2);
         grid-column: 1 / -1;
         margin-inline: calc(-1 * var(--tab-container-margin-inline-pinned-expanded));
+      }
+
+      tab-group[listpinned] > :is(.tabbrowser-tab, .tab-group-label-container, .tab-group-overflow-count-container) {
+        margin-inline-start: calc(var(--space-medium) - var(--tab-container-margin-inline-pinned-expanded));
       }
 
       &::part(items-wrapper) {
