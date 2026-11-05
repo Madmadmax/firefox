@@ -79,6 +79,17 @@ XPCOMUtils.defineLazyPreferenceGetter(
   false
 );
 
+XPCOMUtils.defineLazyPreferenceGetter(
+  lazy,
+  "PIP_WHEN_APP_INACTIVE",
+  "media.videocontrols.picture-in-picture.enable-when-app-inactive.enabled",
+  false
+);
+
+// How long after a window deactivates to check whether another window of the
+// browser took over, which isn't known yet when the event fires.
+const APP_INACTIVE_DELAY_MS = 100;
+
 // True if the window is minimized or fully covered.
 function isWindowOutOfSight(win) {
   return win.windowState == win.STATE_MINIMIZED || win.isFullyOccluded;
@@ -313,6 +324,10 @@ export var PictureInPicture = {
   // sight. No auto-toggle for them until the window is shown again.
   weakOccludedBrowserClosedDeliberately: new WeakSet(),
 
+  // Browsers asked to auto-open a player because the browser lost focus to
+  // another app. Their page stays visible, so docShellIsActive can't tell.
+  weakAppInactiveBrowsers: new WeakSet(),
+
   /**
    * Returns the player window if one exists and if it hasn't yet been closed.
    *
@@ -519,6 +534,58 @@ export var PictureInPicture = {
         reason: "Foregrounded",
         actorRef: this.weakAutoPipBrowserToParent.get(browser),
       });
+    }
+  },
+
+  /**
+   * Opens a player for the window's selected tab if the browser as a whole lost
+   * focus, rather than focus moving to another of its windows or to a player.
+   *
+   * @param {Window} win
+   */
+  onWindowDeactivated(win) {
+    if (!lazy.PIP_ENABLED || !lazy.PIP_WHEN_APP_INACTIVE) {
+      return;
+    }
+    win.setTimeout(() => {
+      if (
+        !win.closed &&
+        !Services.focus.activeWindow &&
+        !(lazy.PIP_WHEN_OCCLUDED && isWindowOutOfSight(win))
+      ) {
+        this.autoPipSelectedBrowser(win);
+      }
+    }, APP_INACTIVE_DELAY_MS);
+  },
+
+  /**
+   * Asks the frames of the window's selected tab to auto-open a player, which
+   * closes again once the window is activated.
+   *
+   * @param {Window} win
+   */
+  autoPipSelectedBrowser(win) {
+    let browser = win.gBrowser?.selectedBrowser;
+    if (!browser?.browsingContext || this.browserWeakMap.has(browser)) {
+      return;
+    }
+    this.weakAppInactiveBrowsers.add(browser);
+    win.addEventListener(
+      "activate",
+      () => {
+        this.weakAppInactiveBrowsers.delete(browser);
+        this.unpipOccludedAutoPipBrowser(win);
+      },
+      { once: true }
+    );
+    for (let context of browser.browsingContext.getAllBrowsingContextsInSubtree()) {
+      try {
+        context.currentWindowGlobal
+          ?.getActor("PictureInPictureLauncher")
+          .sendAsyncMessage("PictureInPicture:AutoToggle");
+      } catch {
+        // Privileged pages don't have this actor, nor videos to open.
+      }
     }
   },
 
@@ -1169,12 +1236,15 @@ export var PictureInPicture = {
     this.weakWinToBrowser.set(win, browser);
     this.addPiPBrowserToWeakMap(browser);
     this.addOriginatingWinToWeakMap(browser);
+    let openedForInactiveApp = this.weakAppInactiveBrowsers.delete(browser);
     if (
       (lazy.PIP_WHEN_SWITCHING_TABS || lazy.PIP_WHEN_OCCLUDED) &&
       !browser.docShellIsActive
     ) {
       // The docshell would only not be active when the video was pip'd via auto toggle
       browser.docShellIsActive = true;
+      this.weakAutoPipBrowserToParent.set(browser, actorRef);
+    } else if (openedForInactiveApp) {
       this.weakAutoPipBrowserToParent.set(browser, actorRef);
     }
 

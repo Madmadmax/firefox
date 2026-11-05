@@ -52,6 +52,8 @@ prefs = [
 
 ["browser_audioScrubber.js"]
 
+["browser_autoPipAppInactive.js"]
+
 ["browser_autotoggle.js"]
 
 ["browser_backgroundTab.js"]

@@ -337,7 +337,7 @@ export class PictureInPictureLauncherChild extends JSWindowActorChild {
 
   /**
    * Automatically toggle Picture-in-Picture if a video tab has been
-   * backgrounded.
+   * backgrounded or the browser lost focus.
    */
   autoToggle() {
     let doc = this.document;
@@ -345,6 +345,7 @@ export class PictureInPictureLauncherChild extends JSWindowActorChild {
       let video = this.findVideoToPiP(doc);
       if (
         video &&
+        !video.isCloningElementVisually &&
         PictureInPictureChild.videoIsPlaying(video) &&
         PictureInPictureChild.videoIsPiPEligible(video)
       ) {

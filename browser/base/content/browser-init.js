@@ -585,6 +585,10 @@ var gBrowserInit = {
       }
     });
 
+    window.addEventListener("deactivate", () =>
+      PictureInPicture.onWindowDeactivated(window)
+    );
+
     window.addEventListener("mousemove", MousePosTracker);
     window.addEventListener("mouseout", MousePosTracker);
     window.addEventListener("dragover", MousePosTracker);

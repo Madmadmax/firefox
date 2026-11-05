@@ -2674,8 +2674,11 @@ pref("media.videocontrols.picture-in-picture.video-toggle.enabled", true);
 pref("media.videocontrols.picture-in-picture.video-toggle.visibility-threshold", "1.0");
 pref("media.videocontrols.picture-in-picture.keyboard-controls.enabled", true);
 pref("media.videocontrols.picture-in-picture.urlbar-button.enabled", true);
-pref("media.videocontrols.picture-in-picture.enable-when-switching-tabs.enabled", false);
-pref("media.videocontrols.picture-in-picture.enable-when-occluded.enabled", false);
+pref("media.videocontrols.picture-in-picture.enable-when-switching-tabs.enabled", true);
+pref("media.videocontrols.picture-in-picture.enable-when-occluded.enabled", true);
+// Also open the player when the browser loses focus to another app while the
+// video tab stays selected, even if its window remains visible.
+pref("media.videocontrols.picture-in-picture.enable-when-app-inactive.enabled", true);
 pref("media.videocontrols.picture-in-picture.auto-close.enabled", true);
 pref("media.videocontrols.picture-in-picture.auto-close.timeoutMs", 1000);
 
