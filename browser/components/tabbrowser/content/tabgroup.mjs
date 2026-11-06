@@ -468,26 +468,28 @@ export class MozTabbrowserTabGroup extends MozXULElement {
   #rememberRetainedTab(tab) {
     const previous = this.#retainedTabs.get(tab.userContextId);
     if (previous == tab) {
-      if (SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) != this.id) {
-        SessionStore.setCustomTabValue(tab, RETAINED_TAB_VALUE, this.id);
+      if (
+        lazy.SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) != this.id
+      ) {
+        lazy.SessionStore.setCustomTabValue(tab, RETAINED_TAB_VALUE, this.id);
       }
       return;
     }
     if (previous?.isOpen) {
-      SessionStore.deleteCustomTabValue(previous, RETAINED_TAB_VALUE);
+      lazy.SessionStore.deleteCustomTabValue(previous, RETAINED_TAB_VALUE);
     }
     this.#retainedTabs.delete(tab.userContextId);
     this.#retainedTabs.set(tab.userContextId, tab);
-    SessionStore.setCustomTabValue(tab, RETAINED_TAB_VALUE, this.id);
+    lazy.SessionStore.setCustomTabValue(tab, RETAINED_TAB_VALUE, this.id);
   }
 
   #clearRetainedTabs() {
     for (const tab of this.tabs) {
       if (
         tab.isOpen &&
-        SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) == this.id
+        lazy.SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) == this.id
       ) {
-        SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
+        lazy.SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
       }
     }
     this.#retainedTabs.clear();
@@ -499,9 +501,10 @@ export class MozTabbrowserTabGroup extends MozXULElement {
         this.#retainedTabs.delete(id);
         if (
           tab.isOpen &&
-          SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) == this.id
+          lazy.SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) ==
+            this.id
         ) {
-          SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
+          lazy.SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
         }
         if (!tab.group || tab.group == this) {
           tab.removeAttribute("group-retained");
@@ -512,17 +515,17 @@ export class MozTabbrowserTabGroup extends MozXULElement {
     for (const tab of this.tabs) {
       if (
         !tab.isOpen ||
-        SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) != this.id
+        lazy.SessionStore.getCustomTabValue(tab, RETAINED_TAB_VALUE) != this.id
       ) {
         continue;
       }
       const previous = this.#retainedTabs.get(tab.userContextId);
       if (previous && previous != tab) {
         if (!tab.selected) {
-          SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
+          lazy.SessionStore.deleteCustomTabValue(tab, RETAINED_TAB_VALUE);
           continue;
         }
-        SessionStore.deleteCustomTabValue(previous, RETAINED_TAB_VALUE);
+        lazy.SessionStore.deleteCustomTabValue(previous, RETAINED_TAB_VALUE);
       }
       this.#retainedTabs.set(tab.userContextId, tab);
     }
@@ -1143,7 +1146,7 @@ export class MozTabbrowserTabGroup extends MozXULElement {
     }
     const retained = this.retainedTab;
     this.#retainedTabs.delete(retained.userContextId);
-    SessionStore.deleteCustomTabValue(retained, RETAINED_TAB_VALUE);
+    lazy.SessionStore.deleteCustomTabValue(retained, RETAINED_TAB_VALUE);
     this.#updateRetainedTabs();
   }
 
