@@ -54,6 +54,7 @@ user_pref("browser.urlbar.speculativeConnect.enabled", false);
 user_pref("browser.urlbar.suggest.searches", false);
 // Tests expect the search mode switcher that this fork hides by default.
 user_pref("browser.urlbar.searchModeSwitcher.hidden", false);
+user_pref("sidebar.toolbarButton.hidden", false);
 // URIFixup whitelist
 user_pref("browser.fixup.domainsuffixwhitelist.test", true);
 user_pref("browser.warnOnQuit", false);

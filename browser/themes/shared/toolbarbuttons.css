@@ -867,11 +867,10 @@ toolbar[keyNav]:not([collapsed], [customizing]) toolbartabstop,
   }
 }
 
-/* With vertical tabs the icon already shows whether the sidebar is expanded,
- * so the button isn't highlighted as checked. */
-@media -moz-pref("sidebar.verticalTabs") {
-  #sidebar-button[checked]:not(:hover) > .toolbarbutton-icon {
-    background-color: var(--toolbarbutton-background-color);
-    outline-color: transparent;
+/* With vertical tabs the sidebar is toggled with Cmd+S instead, as in Arc. The
+ * button stays visible while customizing so it can still be moved. */
+@media -moz-pref("sidebar.verticalTabs") and -moz-pref("sidebar.toolbarButton.hidden") and (-moz-platform: macos) {
+  :root:not([customizing]) #sidebar-button {
+    display: none;
   }
 }

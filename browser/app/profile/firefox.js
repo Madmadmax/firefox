@@ -514,6 +514,9 @@ pref("browser.urlbar.searchModeSwitcher.skipTabStop", true);
 // Hides the "pick a search engine" button of the address bar, except while it
 // shows an active search mode.
 pref("browser.urlbar.searchModeSwitcher.hidden", true);
+// Hides the sidebar toolbar button on macOS with vertical tabs, where Cmd+S
+// toggles the sidebar.
+pref("sidebar.toolbarButton.hidden", true);
 
 pref("browser.urlbar.trackerCount.featureGate", false);
 pref("browser.urlbar.trackerCount.enabled", true);
