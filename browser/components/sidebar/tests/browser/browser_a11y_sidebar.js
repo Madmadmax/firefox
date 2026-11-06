@@ -362,7 +362,7 @@ add_task(async function test_keyboard_navigation_vertical_tabs() {
     syncedTabsButton,
     "Synced Tabs button is active."
   );
-  const newTabButton = sidebar.querySelector("#tabs-newtab-button");
+  const newTabButton = document.getElementById("vertical-tabs-newtab-button");
 
   window.gBrowser.tabs[0].focus();
   ok(isActiveElement(window.gBrowser.tabs[0]), "First tab is focused.");

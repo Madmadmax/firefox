@@ -866,3 +866,12 @@ toolbar[keyNav]:not([collapsed], [customizing]) toolbartabstop,
     display: none;
   }
 }
+
+/* With vertical tabs the icon already shows whether the sidebar is expanded,
+ * so the button isn't highlighted as checked. */
+@media -moz-pref("sidebar.verticalTabs") {
+  #sidebar-button[checked]:not(:hover) > .toolbarbutton-icon {
+    background-color: var(--toolbarbutton-background-color);
+    outline-color: transparent;
+  }
+}

@@ -414,6 +414,7 @@ document.addEventListener(
           break;
         }
         case "toggleSidebarKb":
+        case "toggleSidebarAccelKb":
           if (SIDEBAR_REVAMP_ENABLED) {
             SidebarController.handleToolbarButtonClick().then(() => {
               Glean.sidebar.keyboardShortcut.record({

@@ -52,6 +52,8 @@ user_pref("browser.urlbar.speculativeConnect.enabled", false);
 // Turn off search suggestions in the location bar so as not to trigger network
 // connections.
 user_pref("browser.urlbar.suggest.searches", false);
+// Tests expect the search mode switcher that this fork hides by default.
+user_pref("browser.urlbar.searchModeSwitcher.hidden", false);
 // URIFixup whitelist
 user_pref("browser.fixup.domainsuffixwhitelist.test", true);
 user_pref("browser.warnOnQuit", false);

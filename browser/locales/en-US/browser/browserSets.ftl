@@ -116,6 +116,10 @@ open-tabs-sidebar-shortcut2 =
 toggle-sidebar-shortcut =
     .key = Z
 
+# Toggles the sidebar on macOS together with the Command key, as in Arc.
+toggle-sidebar-accel-shortcut =
+    .key = S
+
 history-show-all-shortcut =
     .key = H
 

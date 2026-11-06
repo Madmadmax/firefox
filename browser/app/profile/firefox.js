@@ -511,6 +511,9 @@ pref("browser.urlbar.deduplication.enabled", true);
 pref("browser.urlbar.scotchBonnet.enableOverride", true);
 
 pref("browser.urlbar.searchModeSwitcher.skipTabStop", true);
+// Hides the "pick a search engine" button of the address bar, except while it
+// shows an active search mode.
+pref("browser.urlbar.searchModeSwitcher.hidden", true);
 
 pref("browser.urlbar.trackerCount.featureGate", false);
 pref("browser.urlbar.trackerCount.enabled", true);
