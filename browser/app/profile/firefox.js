@@ -2370,8 +2370,9 @@ pref("sidebar.verticalTabs.dragToPinPromo.dismissed", false);
 // "always-show", "expand-on-hover", "hide-sidebar". Horizontal tabs:
 // "hide-on-close" (default) and "hide-launcher" (switcher-only). The default
 // here is the vertical default; SidebarManager normalizes to the right value
-// for the current orientation.
-pref("sidebar.visibility", "always-show");
+// for the current orientation. This fork hides the whole sidebar, as Arc does
+// with Cmd+S, instead of collapsing it to icons.
+pref("sidebar.visibility", "hide-sidebar");
 // Sidebar UI state is stored per-window via session restore. Use this pref
 // as a backup to restore the sidebar UI state when a user has PPB mode on
 // or has history cleared on browser close.
